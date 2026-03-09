@@ -761,7 +761,10 @@ export default function Home() {
               ) : null}
               {rightView === "tree" ? (
                 parsedOutput ? (
-                  <TreeView data={parsedOutput} />
+                  <TreeView
+                    data={parsedOutput}
+                    className={isDark ? "border-[#3c3c3c] bg-[#252526]" : "border-[#d4d4d4] bg-[#f3f3f3]"}
+                  />
                 ) : (
                   <div className="flex h-full min-h-[360px] items-center justify-center rounded-xl border border-base-300 bg-base-100 text-sm text-base-content/70">
                     Current output is not valid JSON.

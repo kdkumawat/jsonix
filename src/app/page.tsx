@@ -178,6 +178,7 @@ export default function Home() {
   const toolbarBorderClass = isDark ? "border-white/45" : "border-base-300";
   const toolbarDividerClass = isDark ? "bg-white/45" : "bg-base-300";
   const monacoTheme = isDark ? "vs-dark" : "vs";
+  const outputPanelClass = isDark ? "border-[#3c3c3c] bg-[#252526]" : "border-[#d4d4d4] bg-[#f3f3f3]";
   const canUndo = undoIndex > 0;
   const canRedo = undoIndex < undoStack.length - 1;
   const toolbarBtnBase =
@@ -672,8 +673,8 @@ export default function Home() {
 
         <section
           ref={splitContainerRef}
-          className="relative flex-1 min-h-0 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"
-          style={{ gridTemplateColumns: isInputMinimized ? "0% 100%" : `${split}% ${100 - split}%` }}
+          className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0" : "grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"}`}
+          style={isInputMinimized ? undefined : { gridTemplateColumns: `${split}% ${100 - split}%` }}
         >
           <div
             className={`absolute top-0 bottom-0 z-20 items-center ${isInputMinimized ? "hidden" : "hidden xl:flex"}`}
@@ -692,24 +693,26 @@ export default function Home() {
             />
           </div>
 
-          <div
-            className={`${isInputMinimized ? "hidden" : ""} min-h-0 transition-all ${focusedPane === "input" ? "opacity-100" : "opacity-60 saturate-50"}`}
-            onMouseDown={() => setFocusedPane("input")}
-          >
-            <JsonEditor
-              value={input}
-              onChange={(next) => {
-                setInput(next);
-                pushHistory(next);
-                setFocusedPane("input");
-              }}
-              className="h-full min-h-0"
-              language="json"
-              monacoTheme={monacoTheme}
-              placeholder="Paste or drop JSON here"
-              panelTone="input"
-            />
-          </div>
+          {!isInputMinimized ? (
+            <div
+              className={`min-h-0 transition-all ${focusedPane === "input" ? "opacity-100" : "opacity-60 saturate-50"}`}
+              onMouseDown={() => setFocusedPane("input")}
+            >
+              <JsonEditor
+                value={input}
+                onChange={(next) => {
+                  setInput(next);
+                  pushHistory(next);
+                  setFocusedPane("input");
+                }}
+                className="h-full min-h-0"
+                language="json"
+                monacoTheme={monacoTheme}
+                placeholder="Paste or drop JSON here"
+                panelTone="input"
+              />
+            </div>
+          ) : null}
 
           <div
             className="relative min-h-0 flex flex-col"
@@ -750,7 +753,7 @@ export default function Home() {
                     panelTone="output"
                   />
                 ) : (
-                  <div className="flex h-full min-h-[360px] items-center justify-center rounded-xl border border-base-300 bg-base-100 text-sm text-base-content/70">
+                  <div className={`flex h-full min-h-[360px] items-center justify-center rounded-xl border text-sm text-base-content/70 ${outputPanelClass}`}>
                     Run any operation to see output here
                   </div>
                 )
@@ -759,10 +762,10 @@ export default function Home() {
                 parsedOutput ? (
                   <TreeView
                     data={parsedOutput}
-                    className={isDark ? "border-[#3c3c3c] bg-[#252526]" : "border-[#d4d4d4] bg-[#f3f3f3]"}
+                    className={outputPanelClass}
                   />
                 ) : (
-                  <div className="flex h-full min-h-[360px] items-center justify-center rounded-xl border border-base-300 bg-base-100 text-sm text-base-content/70">
+                  <div className={`flex h-full min-h-[360px] items-center justify-center rounded-xl border text-sm text-base-content/70 ${outputPanelClass}`}>
                     Current output is not valid JSON.
                   </div>
                 )

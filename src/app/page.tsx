@@ -153,11 +153,11 @@ export default function Home() {
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "done" | "error">("idle");
   const [isInputMinimized, setIsInputMinimized] = useState(false);
+  const [focusedPane, setFocusedPane] = useState<"input" | "output">("input");
   const [undoStack, setUndoStack] = useState<string[]>([SAMPLE_JSON]);
   const [undoIndex, setUndoIndex] = useState(0);
   const historyLock = useRef(false);
   const splitContainerRef = useRef<HTMLElement | null>(null);
-  const previousSplitRef = useRef(30);
   const typeMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
 
@@ -458,7 +458,7 @@ export default function Home() {
   };
 
   const runOperation = (action: OperationAction) => {
-    maximizeOutput();
+    setFocusedPane("output");
     setActiveOperation(action);
     if (action === "validate") {
       setModalKind("validate");
@@ -496,20 +496,9 @@ export default function Home() {
     window.setTimeout(() => setCopyState("idle"), 1400);
   };
 
-  const maximizeOutput = () => {
-    if (isInputMinimized) return;
-    previousSplitRef.current = split;
-    setSplit(12);
-    setIsInputMinimized(true);
-  };
-
   const toggleInputMinimized = () => {
-    if (!isInputMinimized) {
-      maximizeOutput();
-      return;
-    }
-    setSplit(previousSplitRef.current);
-    setIsInputMinimized(false);
+    setIsInputMinimized((prev) => !prev);
+    setFocusedPane((prev) => (prev === "input" ? "output" : prev));
   };
 
   const importJsonFile = (file: File) => {
@@ -582,8 +571,8 @@ export default function Home() {
                   setError(null);
                   setActiveOperation(null);
                   setSplit(30);
-                  previousSplitRef.current = 30;
                   setIsInputMinimized(false);
+                  setFocusedPane("input");
                   setCopyState("idle");
                 }}
               >
@@ -632,7 +621,7 @@ export default function Home() {
                         }`}
                         onClick={() => {
                           setIsTypeMenuOpen(false);
-                          maximizeOutput();
+                          setFocusedPane("output");
                           setActiveOperation("generateTypes");
                           executeOperation("generateTypes", { typeLanguage: item.id });
                         }}
@@ -684,7 +673,7 @@ export default function Home() {
         <section
           ref={splitContainerRef}
           className="relative flex-1 min-h-0 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"
-          style={{ gridTemplateColumns: `${split}% ${100 - split}%` }}
+          style={{ gridTemplateColumns: isInputMinimized ? "0% 100%" : `${split}% ${100 - split}%` }}
         >
           <div
             className={`absolute top-0 bottom-0 z-20 items-center ${isInputMinimized ? "hidden" : "hidden xl:flex"}`}
@@ -703,12 +692,16 @@ export default function Home() {
             />
           </div>
 
-          <div className={`${isInputMinimized ? "hidden xl:block xl:opacity-80" : ""} min-h-0`}>
+          <div
+            className={`${isInputMinimized ? "hidden" : ""} min-h-0 transition-all ${focusedPane === "input" ? "opacity-100" : "opacity-60 saturate-50"}`}
+            onMouseDown={() => setFocusedPane("input")}
+          >
             <JsonEditor
               value={input}
               onChange={(next) => {
                 setInput(next);
                 pushHistory(next);
+                setFocusedPane("input");
               }}
               className="h-full min-h-0"
               language="json"
@@ -718,7 +711,10 @@ export default function Home() {
             />
           </div>
 
-          <div className="relative min-h-0 flex flex-col">
+          <div
+            className="relative min-h-0 flex flex-col"
+            onMouseDown={() => setFocusedPane("output")}
+          >
             <button
               type="button"
               aria-label={isInputMinimized ? "Restore input panel" : "Maximize output panel"}

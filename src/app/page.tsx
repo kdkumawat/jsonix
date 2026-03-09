@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowPathIcon,
+  ArrowsPointingInIcon,
+  ArrowsPointingOutIcon,
   ArrowUturnLeftIcon,
   ArrowUturnRightIcon,
   ChevronDownIcon,
@@ -139,7 +141,7 @@ export default function Home() {
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [systemDark, setSystemDark] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [split, setSplit] = useState(52);
+  const [split, setSplit] = useState(30);
   const [isResizing, setIsResizing] = useState(false);
   const [schemaInput, setSchemaInput] = useState("");
   const [compareInput, setCompareInput] = useState("");
@@ -149,6 +151,9 @@ export default function Home() {
   const [rightView, setRightView] = useState<RightView>("raw");
   const [typeLanguage, setTypeLanguage] = useState<TypeTargetLanguage>("typescript");
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "done" | "error">("idle");
+  const [isInputMinimized, setIsInputMinimized] = useState(false);
+  const [focusedPane, setFocusedPane] = useState<"input" | "output">("input");
   const [undoStack, setUndoStack] = useState<string[]>([SAMPLE_JSON]);
   const [undoIndex, setUndoIndex] = useState(0);
   const historyLock = useRef(false);
@@ -173,6 +178,7 @@ export default function Home() {
   const toolbarBorderClass = isDark ? "border-white/45" : "border-base-300";
   const toolbarDividerClass = isDark ? "bg-white/45" : "bg-base-300";
   const monacoTheme = isDark ? "vs-dark" : "vs";
+  const outputPanelClass = isDark ? "border-[#3c3c3c] bg-[#252526]" : "border-[#d4d4d4] bg-[#f3f3f3]";
   const canUndo = undoIndex > 0;
   const canRedo = undoIndex < undoStack.length - 1;
   const toolbarBtnBase =
@@ -453,6 +459,7 @@ export default function Home() {
   };
 
   const runOperation = (action: OperationAction) => {
+    setFocusedPane("output");
     setActiveOperation(action);
     if (action === "validate") {
       setModalKind("validate");
@@ -477,6 +484,22 @@ export default function Home() {
     a.download = `jsonix-output.${outputExt}`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const copyOutput = async () => {
+    if (!output.trim()) return;
+    try {
+      await navigator.clipboard.writeText(output);
+      setCopyState("done");
+    } catch {
+      setCopyState("error");
+    }
+    window.setTimeout(() => setCopyState("idle"), 1400);
+  };
+
+  const toggleInputMinimized = () => {
+    setIsInputMinimized((prev) => !prev);
+    setFocusedPane((prev) => (prev === "input" ? "output" : prev));
   };
 
   const importJsonFile = (file: File) => {
@@ -548,6 +571,10 @@ export default function Home() {
                   setParsedOutput(null);
                   setError(null);
                   setActiveOperation(null);
+                  setSplit(30);
+                  setIsInputMinimized(false);
+                  setFocusedPane("input");
+                  setCopyState("idle");
                 }}
               >
                 <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
@@ -595,6 +622,7 @@ export default function Home() {
                         }`}
                         onClick={() => {
                           setIsTypeMenuOpen(false);
+                          setFocusedPane("output");
                           setActiveOperation("generateTypes");
                           executeOperation("generateTypes", { typeLanguage: item.id });
                         }}
@@ -627,6 +655,14 @@ export default function Home() {
                 type="button"
                 className={`${toolbarBtnActive} shrink-0 px-3 disabled:opacity-40`}
                 disabled={!canDownload}
+                onClick={copyOutput}
+              >
+                {copyState === "done" ? "Copied" : copyState === "error" ? "Copy Failed" : "Copy"}
+              </button>
+              <button
+                type="button"
+                className={`${toolbarBtnActive} shrink-0 px-3 disabled:opacity-40`}
+                disabled={!canDownload}
                 onClick={downloadOutput}
               >
                 Download
@@ -637,11 +673,11 @@ export default function Home() {
 
         <section
           ref={splitContainerRef}
-          className="relative flex-1 min-h-0 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"
-          style={{ gridTemplateColumns: `${split}% ${100 - split}%` }}
+          className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0" : "grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"}`}
+          style={isInputMinimized ? undefined : { gridTemplateColumns: `${split}% ${100 - split}%` }}
         >
           <div
-            className="hidden xl:flex absolute top-0 bottom-0 z-20 items-center"
+            className={`absolute top-0 bottom-0 z-20 items-center ${isInputMinimized ? "hidden" : "hidden xl:flex"}`}
             style={{ left: `${split}%`, transform: "translateX(-50%)" }}
           >
             <div className="h-full w-px bg-base-300" />
@@ -651,26 +687,50 @@ export default function Home() {
               aria-label="Resize panels by dragging divider"
               onMouseDown={(event) => {
                 event.preventDefault();
+                if (isInputMinimized) setIsInputMinimized(false);
                 setIsResizing(true);
               }}
             />
           </div>
 
-          <div className="min-h-0">
-            <JsonEditor
-              value={input}
-              onChange={(next) => {
-                setInput(next);
-                pushHistory(next);
-              }}
-              className="h-full min-h-0"
-              language="json"
-              monacoTheme={monacoTheme}
-              placeholder="Paste or drop JSON here"
-            />
-          </div>
+          {!isInputMinimized ? (
+            <div
+              className={`min-h-0 transition-all ${focusedPane === "input" ? "opacity-100" : "opacity-60 saturate-50"}`}
+              onMouseDown={() => setFocusedPane("input")}
+            >
+              <JsonEditor
+                value={input}
+                onChange={(next) => {
+                  setInput(next);
+                  pushHistory(next);
+                  setFocusedPane("input");
+                }}
+                className="h-full min-h-0"
+                language="json"
+                monacoTheme={monacoTheme}
+                placeholder="Paste or drop JSON here"
+                panelTone="input"
+              />
+            </div>
+          ) : null}
 
-          <div className="min-h-0 flex flex-col">
+          <div
+            className="relative min-h-0 flex flex-col"
+            onMouseDown={() => setFocusedPane("output")}
+          >
+            <button
+              type="button"
+              aria-label={isInputMinimized ? "Restore input panel" : "Maximize output panel"}
+              title={isInputMinimized ? "Restore input panel" : "Maximize output panel"}
+              className={`${toolbarBtnIcon} absolute right-2 top-2 z-20`}
+              onClick={toggleInputMinimized}
+            >
+              {isInputMinimized ? (
+                <ArrowsPointingInIcon className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <ArrowsPointingOutIcon className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
             <div className="flex-1 min-h-0">
               {rightView === "raw" ? (
                 activeOperation === "diff" && diffPreview ? (
@@ -690,18 +750,22 @@ export default function Home() {
                     passiveReadOnly
                     language={outputLanguage}
                     monacoTheme={monacoTheme}
+                    panelTone="output"
                   />
                 ) : (
-                  <div className="flex h-full min-h-[360px] items-center justify-center rounded-xl border border-base-300 bg-base-100 text-sm text-base-content/70">
+                  <div className={`flex h-full min-h-[360px] items-center justify-center rounded-xl border text-sm text-base-content/70 ${outputPanelClass}`}>
                     Run any operation to see output here
                   </div>
                 )
               ) : null}
               {rightView === "tree" ? (
                 parsedOutput ? (
-                  <TreeView data={parsedOutput} />
+                  <TreeView
+                    data={parsedOutput}
+                    className={outputPanelClass}
+                  />
                 ) : (
-                  <div className="flex h-full min-h-[360px] items-center justify-center rounded-xl border border-base-300 bg-base-100 text-sm text-base-content/70">
+                  <div className={`flex h-full min-h-[360px] items-center justify-center rounded-xl border text-sm text-base-content/70 ${outputPanelClass}`}>
                     Current output is not valid JSON.
                   </div>
                 )

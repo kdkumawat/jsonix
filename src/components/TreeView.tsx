@@ -5,6 +5,7 @@ import type { JsonValue } from "@/lib/json/core";
 
 interface TreeViewProps {
   data: JsonValue;
+  className?: string;
 }
 
 const MAX_INITIAL_DEPTH = 2;
@@ -73,11 +74,11 @@ function Node({
   );
 }
 
-export function TreeView({ data }: TreeViewProps) {
+export function TreeView({ data, className }: TreeViewProps) {
   const rootLabel = useMemo(() => (Array.isArray(data) ? "root[]" : "root"), [data]);
 
   return (
-    <div className="h-full min-h-[360px] overflow-auto rounded-xl border border-base-300 bg-base-100 p-3">
+    <div className={`h-full min-h-[360px] overflow-auto rounded-xl border border-base-300 bg-base-100 p-3 ${className ?? ""}`}>
       <Node nodeKey={rootLabel} value={data} depth={0} />
     </div>
   );

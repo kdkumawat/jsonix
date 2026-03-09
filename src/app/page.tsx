@@ -581,6 +581,10 @@ export default function Home() {
                   setParsedOutput(null);
                   setError(null);
                   setActiveOperation(null);
+                  setSplit(30);
+                  previousSplitRef.current = 30;
+                  setIsInputMinimized(false);
+                  setCopyState("idle");
                 }}
               >
                 <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />

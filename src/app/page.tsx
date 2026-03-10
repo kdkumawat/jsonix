@@ -150,7 +150,6 @@ export default function Home() {
   const [diffPreview, setDiffPreview] = useState<{ original: string; modified: string } | null>(null);
   const [rightView, setRightView] = useState<RightView>("raw");
   const [typeLanguage, setTypeLanguage] = useState<TypeTargetLanguage>("typescript");
-  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "done" | "error">("idle");
   const [isInputMinimized, setIsInputMinimized] = useState(false);
   const [isDesktopLayout, setIsDesktopLayout] = useState(false);
@@ -159,7 +158,6 @@ export default function Home() {
   const [undoIndex, setUndoIndex] = useState(0);
   const historyLock = useRef(false);
   const splitContainerRef = useRef<HTMLElement | null>(null);
-  const typeMenuRef = useRef<HTMLDivElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
 
   const canDownload = useMemo(() => output.trim().length > 0, [output]);
@@ -342,16 +340,13 @@ export default function Home() {
     const onMouseDown = (event: MouseEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
-      if (isTypeMenuOpen && typeMenuRef.current && !typeMenuRef.current.contains(target)) {
-        setIsTypeMenuOpen(false);
-      }
       if (isSettingsOpen && settingsRef.current && !settingsRef.current.contains(target)) {
         setIsSettingsOpen(false);
       }
     };
     window.addEventListener("mousedown", onMouseDown);
     return () => window.removeEventListener("mousedown", onMouseDown);
-  }, [isTypeMenuOpen, isSettingsOpen]);
+  }, [isSettingsOpen]);
 
   const setOutputData = (
     value: string,
@@ -607,59 +602,27 @@ export default function Home() {
                   {label}
                 </button>
               ))}
-              <div className="relative hidden shrink-0 md:block" ref={typeMenuRef}>
-                <button
-                  type="button"
-                  className={`${
-                    activeOperation === "generateTypes" ? toolbarBtnActive : toolbarBtnBase
-                  } inline-flex shrink-0 items-center gap-2`}
-                  onClick={() => setIsTypeMenuOpen((s) => !s)}
-                >
-                  Language
-                  <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
-                </button>
-                {isTypeMenuOpen ? (
-                  <div
-                    className={`absolute right-0 z-30 mt-1 min-w-[220px] rounded-box border bg-base-100 p-1 shadow-xl ${toolbarBorderClass}`}
+              <label className="form-control w-36 shrink-0 sm:w-44">
+                <span className="sr-only">Select type language</span>
+                <div className="relative">
+                  <select
+                    className={`select select-sm h-9 min-h-9 w-full rounded-md border px-2.5 pr-8 ${toolbarBorderClass}`}
+                    value={typeLanguage}
+                    onChange={(event) => {
+                      const selected = event.target.value as TypeTargetLanguage;
+                      setFocusedPane("output");
+                      setActiveOperation("generateTypes");
+                      executeOperation("generateTypes", { typeLanguage: selected });
+                    }}
                   >
                     {TYPE_LANGUAGES.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`btn btn-ghost btn-sm block w-full justify-start text-left ${
-                          typeLanguage === item.id ? "btn-active" : ""
-                        }`}
-                        onClick={() => {
-                          setIsTypeMenuOpen(false);
-                          setFocusedPane("output");
-                          setActiveOperation("generateTypes");
-                          executeOperation("generateTypes", { typeLanguage: item.id });
-                        }}
-                      >
+                      <option key={item.id} value={item.id}>
                         {item.label}
-                      </button>
+                      </option>
                     ))}
-                  </div>
-                ) : null}
-              </div>
-              <label className="form-control w-auto shrink-0 md:hidden">
-                <span className="sr-only">Select type language</span>
-                <select
-                  className={`select select-sm h-9 min-h-9 rounded-md border px-2.5 ${toolbarBorderClass}`}
-                  value={typeLanguage}
-                  onChange={(event) => {
-                    const selected = event.target.value as TypeTargetLanguage;
-                    setFocusedPane("output");
-                    setActiveOperation("generateTypes");
-                    executeOperation("generateTypes", { typeLanguage: selected });
-                  }}
-                >
-                  {TYPE_LANGUAGES.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                  </select>
+                  <ChevronDownIcon className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 opacity-70" aria-hidden="true" />
+                </div>
               </label>
               <div aria-hidden="true" className={`h-6 w-px self-center ${toolbarDividerClass}`} />
               <div className={`join ml-auto h-9 shrink-0 overflow-hidden rounded-md border ${toolbarBorderClass}`}>

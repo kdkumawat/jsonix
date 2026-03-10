@@ -530,7 +530,7 @@ export default function Home() {
     >
       <div className="mx-auto min-h-full max-w-[1700px] flex flex-col gap-3 xl:h-full">
         <section className="rounded-md border border-base-300 bg-base-100 p-2.5 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-3">
             <div className="flex shrink-0 items-center gap-2">
               <label
                 className={toolbarBtnBase}
@@ -595,7 +595,7 @@ export default function Home() {
               className={`hidden h-7 w-px self-center md:block ${toolbarDividerClass}`}
             />
 
-            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
               {OPERATION_ACTIONS.map(([label, action]) => (
                 <button
                   type="button"

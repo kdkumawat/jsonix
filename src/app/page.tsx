@@ -530,7 +530,7 @@ export default function Home() {
     >
       <div className="mx-auto min-h-full max-w-[1700px] flex flex-col gap-3 xl:h-full">
         <section className="rounded-md border border-base-300 bg-base-100 p-2.5 shadow-sm">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto overflow-y-visible pb-1">
             <div className="flex shrink-0 items-center gap-2">
               <label
                 className={toolbarBtnBase}
@@ -595,7 +595,7 @@ export default function Home() {
               className={`hidden h-7 w-px self-center md:block ${toolbarDividerClass}`}
             />
 
-            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               {OPERATION_ACTIONS.map(([label, action]) => (
                 <button
                   type="button"
@@ -607,7 +607,7 @@ export default function Home() {
                   {label}
                 </button>
               ))}
-              <div className="relative shrink-0" ref={typeMenuRef}>
+              <div className="relative hidden shrink-0 md:block" ref={typeMenuRef}>
                 <button
                   type="button"
                   className={`${
@@ -642,6 +642,25 @@ export default function Home() {
                   </div>
                 ) : null}
               </div>
+              <label className="form-control w-auto shrink-0 md:hidden">
+                <span className="sr-only">Select type language</span>
+                <select
+                  className={`select select-sm h-9 min-h-9 rounded-md border px-2.5 ${toolbarBorderClass}`}
+                  value={typeLanguage}
+                  onChange={(event) => {
+                    const selected = event.target.value as TypeTargetLanguage;
+                    setFocusedPane("output");
+                    setActiveOperation("generateTypes");
+                    executeOperation("generateTypes", { typeLanguage: selected });
+                  }}
+                >
+                  {TYPE_LANGUAGES.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div aria-hidden="true" className={`h-6 w-px self-center ${toolbarDividerClass}`} />
               <div className={`join ml-auto h-9 shrink-0 overflow-hidden rounded-md border ${toolbarBorderClass}`}>
                 {(["raw", "tree"] as const).map((view) => (
@@ -682,7 +701,7 @@ export default function Home() {
 
         <section
           ref={splitContainerRef}
-          className={`relative grid min-h-0 xl:flex-1 ${isInputMinimized ? "grid-cols-1 gap-0" : "grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"}`}
+          className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0" : "grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"}`}
           style={isInputMinimized || !isDesktopLayout ? undefined : { gridTemplateColumns: `${split}% ${100 - split}%` }}
         >
           <div

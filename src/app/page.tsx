@@ -153,6 +153,7 @@ export default function Home() {
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "done" | "error">("idle");
   const [isInputMinimized, setIsInputMinimized] = useState(false);
+  const [isDesktopLayout, setIsDesktopLayout] = useState(false);
   const [focusedPane, setFocusedPane] = useState<"input" | "output">("input");
   const [undoStack, setUndoStack] = useState<string[]>([SAMPLE_JSON]);
   const [undoIndex, setUndoIndex] = useState(0);
@@ -220,6 +221,14 @@ export default function Home() {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);
     setSystemDark(media.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1280px)");
+    const onChange = (event: MediaQueryListEvent) => setIsDesktopLayout(event.matches);
+    setIsDesktopLayout(media.matches);
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
   }, []);
@@ -521,7 +530,7 @@ export default function Home() {
     >
       <div className="mx-auto h-full max-w-[1700px] flex flex-col gap-3">
         <section className="rounded-md border border-base-300 bg-base-100 p-2.5 shadow-sm">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
             <div className="flex shrink-0 items-center gap-2">
               <label
                 className={toolbarBtnBase}
@@ -586,7 +595,7 @@ export default function Home() {
               className={`hidden h-7 w-px self-center md:block ${toolbarDividerClass}`}
             />
 
-            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
               {OPERATION_ACTIONS.map(([label, action]) => (
                 <button
                   type="button"
@@ -674,7 +683,7 @@ export default function Home() {
         <section
           ref={splitContainerRef}
           className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0" : "grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"}`}
-          style={isInputMinimized ? undefined : { gridTemplateColumns: `${split}% ${100 - split}%` }}
+          style={isInputMinimized || !isDesktopLayout ? undefined : { gridTemplateColumns: `${split}% ${100 - split}%` }}
         >
           <div
             className={`absolute top-0 bottom-0 z-20 items-center ${isInputMinimized ? "hidden" : "hidden xl:flex"}`}

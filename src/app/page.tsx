@@ -195,6 +195,7 @@ export default function Home() {
   const outputPanelClass = isDark ? "border-[#2d2d30] bg-[#1e1e1e]" : "border-[#e5e5e5] bg-[#ffffff]";
   const canUndo = undoIndex > 0;
   const canRedo = undoIndex < undoStack.length - 1;
+  const copyLabel = copyState === "done" ? "Copied" : copyState === "error" ? "Failed" : "Copy";
   const selectedTypeLanguageLabel =
     TYPE_LANGUAGES.find((item) => item.id === typeLanguage)?.label ?? "Language";
   const toolbarBtnBase =
@@ -693,14 +694,14 @@ export default function Home() {
                                 applyFormatWithOptions({ ...formatOptions, indentation });
                               }}
                             />
-                            <div className="mt-2 flex justify-between px-1 text-[10px] leading-none opacity-70">
+                            <div className="mt-2 grid grid-cols-10 px-1 text-[10px] leading-none opacity-70">
                               {Array.from({ length: 10 }, (_, index) => (
-                                <span key={`indent-mark-${index + 1}`}>|</span>
+                                <span key={`indent-mark-${index + 1}`} className="text-center">|</span>
                               ))}
                             </div>
-                            <div className="mt-1 flex justify-between px-1 text-[10px] leading-none opacity-80">
+                            <div className="mt-1 grid grid-cols-10 px-1 text-[10px] leading-none tabular-nums opacity-80">
                               {Array.from({ length: 10 }, (_, index) => (
-                                <span key={`indent-label-${index + 1}`}>{index + 1}</span>
+                                <span key={`indent-label-${index + 1}`} className="text-center">{index + 1}</span>
                               ))}
                             </div>
                           </div>
@@ -819,11 +820,11 @@ export default function Home() {
               </div>
               <button
                 type="button"
-                className={`${toolbarBtnActive} shrink-0 px-3 disabled:opacity-40`}
+                className={`${toolbarBtnActive} min-w-[5.5rem] shrink-0 justify-center px-3 disabled:opacity-40`}
                 disabled={!canDownload}
                 onClick={copyOutput}
               >
-                {copyState === "done" ? "Copied" : copyState === "error" ? "Copy Failed" : "Copy"}
+                {copyLabel}
               </button>
               <button
                 type="button"
@@ -839,7 +840,7 @@ export default function Home() {
 
         <section
           ref={splitContainerRef}
-          className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0 min-h-[calc(100dvh-11rem)]" : "grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]"}`}
+          className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0 min-h-[calc(100dvh-11rem)]" : "grid-cols-1 gap-3 xl:gap-0 xl:grid-cols-[30%_70%]"}`}
           style={isInputMinimized || !isDesktopLayout ? undefined : { gridTemplateColumns: `${split}% ${100 - split}%` }}
         >
           <div
@@ -941,7 +942,9 @@ export default function Home() {
           </div>
         </section>
 
-        {error ? <p className="text-sm text-error">{error}</p> : null}
+        <div className="min-h-6 px-1">
+          {error ? <p className="text-sm text-error">{error}</p> : null}
+        </div>
 
         {modalKind ? (
           <div className="modal modal-open">

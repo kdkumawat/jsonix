@@ -134,9 +134,9 @@ const LANGUAGE_BY_TYPE_TARGET: Record<TypeTargetLanguage, OutputLanguage> = {
   rust: "rust",
 };
 
-const INDENTATION_OPTIONS = [4, 6, 8] as const;
+const INDENTATION_OPTIONS = [2, 4, 6, 8] as const;
 const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
-  indentation: 4,
+  indentation: 2,
   quoteStyle: "double",
   sortKeys: false,
   removeEmpty: false,
@@ -206,14 +206,6 @@ export default function Home() {
   const toolbarBtnIcon =
     `btn btn-sm btn-square h-9 min-h-9 rounded-md border ${toolbarBorderClass} bg-base-100 text-base-content shadow-none hover:bg-base-200`;
   const dropdownPanelClass = isDark ? "bg-[#252526] text-base-content" : "bg-base-100 text-base-content";
-
-  const normalizedIndentation = Number.isFinite(Number(customIndentation))
-    ? Math.max(0, Math.min(12, Math.floor(Number(customIndentation))))
-    : formatOptions.indentation;
-
-  const selectedIndentationLabel = INDENTATION_OPTIONS.includes(formatOptions.indentation as 4 | 6 | 8)
-    ? `${formatOptions.indentation} spaces`
-    : `Custom (${formatOptions.indentation})`;
 
   const themeOptions = [
     { mode: "system" as const, ariaLabel: "Use system theme", title: "System theme", Icon: ComputerDesktopIcon },
@@ -570,12 +562,6 @@ export default function Home() {
     executeOperation("format", { formatOptions: next });
   };
 
-  const handleCustomIndentationApply = () => {
-    const nextIndentation = normalizedIndentation;
-    const next = { ...formatOptions, indentation: nextIndentation };
-    applyFormatWithOptions(next);
-  };
-
   const importJsonFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -691,8 +677,8 @@ export default function Home() {
                     >
                       <div className="space-y-3">
                         <div>
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide opacity-70">Indentation (spaces)</p>
-                          <div className="flex flex-wrap gap-1.5">
+                          <p className="mb-2 text-xs font-semibold opacity-70">Indentation</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
                             {INDENTATION_OPTIONS.map((size) => (
                               <button
                                 key={size}
@@ -703,25 +689,29 @@ export default function Home() {
                                 {size} spaces
                               </button>
                             ))}
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <input
-                              type="number"
-                              min={0}
-                              max={12}
-                              value={customIndentation}
-                              onChange={(event) => setCustomIndentation(event.target.value)}
-                              className="input input-bordered input-sm w-20"
-                              aria-label="Custom indentation"
-                            />
-                            <button type="button" className="btn btn-xs" onClick={handleCustomIndentationApply}>
-                              Apply
-                            </button>
-                            <span className="text-xs opacity-70">{selectedIndentationLabel}</span>
+                            <div className="flex items-center gap-2 rounded-md border border-base-300 px-2 py-1">
+                              <span className="text-xs opacity-70">Custom</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={12}
+                                value={customIndentation}
+                                onChange={(event) => {
+                                  const nextValue = event.target.value;
+                                  setCustomIndentation(nextValue);
+                                  const parsed = Number(nextValue);
+                                  if (!Number.isFinite(parsed)) return;
+                                  const indentation = Math.max(0, Math.min(12, Math.floor(parsed)));
+                                  applyFormatWithOptions({ ...formatOptions, indentation });
+                                }}
+                                className="input input-bordered input-xs w-16"
+                                aria-label="Custom indentation"
+                              />
+                            </div>
                           </div>
                         </div>
                         <div>
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide opacity-70">Quote style</p>
+                          <p className="mb-2 text-xs font-semibold opacity-70">Quote style</p>
                           <div className={`join h-7 overflow-hidden rounded-md border ${toolbarBorderClass}`}>
                             {(["double", "single"] as const).map((quote) => (
                               <button
@@ -735,28 +725,30 @@ export default function Home() {
                             ))}
                           </div>
                         </div>
-                        <label className="label cursor-pointer justify-start gap-2 p-0">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-sm"
-                            checked={formatOptions.sortKeys}
-                            onChange={(event) =>
-                              applyFormatWithOptions({ ...formatOptions, sortKeys: event.target.checked })
-                            }
-                          />
-                          <span className="label-text text-sm">Sort</span>
-                        </label>
-                        <label className="label cursor-pointer justify-start gap-2 p-0">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-sm"
-                            checked={formatOptions.removeEmpty}
-                            onChange={(event) =>
-                              applyFormatWithOptions({ ...formatOptions, removeEmpty: event.target.checked })
-                            }
-                          />
-                          <span className="label-text text-sm">Remove Empty</span>
-                        </label>
+                        <div className="flex items-center gap-6 pt-1">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              className="checkbox checkbox-sm"
+                              checked={formatOptions.sortKeys}
+                              onChange={(event) =>
+                                applyFormatWithOptions({ ...formatOptions, sortKeys: event.target.checked })
+                              }
+                            />
+                            <span>Sort</span>
+                          </label>
+                          <label className="flex cursor-pointer items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              className="checkbox checkbox-sm"
+                              checked={formatOptions.removeEmpty}
+                              onChange={(event) =>
+                                applyFormatWithOptions({ ...formatOptions, removeEmpty: event.target.checked })
+                              }
+                            />
+                            <span>Remove Empty</span>
+                          </label>
+                        </div>
 
                       </div>
                     </div>

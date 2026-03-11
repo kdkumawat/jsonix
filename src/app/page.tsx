@@ -678,50 +678,52 @@ export default function Home() {
                       <div className="space-y-3">
                         <div>
                           <p className="mb-2 text-xs font-semibold opacity-70">Indentation</p>
-                          <div className="flex flex-wrap items-center gap-1.5">
+                          <div className="join">
                             {INDENTATION_OPTIONS.map((size) => (
-                              <button
-                                key={size}
-                                type="button"
-                                className={`btn btn-xs ${formatOptions.indentation === size ? "btn-primary" : "btn-ghost"}`}
-                                onClick={() => applyFormatWithOptions({ ...formatOptions, indentation: size })}
-                              >
-                                {size} spaces
-                              </button>
-                            ))}
-                            <div className="flex items-center gap-2 rounded-md border border-base-300 px-2 py-1">
-                              <span className="text-xs opacity-70">Custom</span>
                               <input
-                                type="number"
-                                min={0}
-                                max={12}
-                                value={customIndentation}
-                                onChange={(event) => {
-                                  const nextValue = event.target.value;
-                                  setCustomIndentation(nextValue);
-                                  const parsed = Number(nextValue);
-                                  if (!Number.isFinite(parsed)) return;
-                                  const indentation = Math.max(0, Math.min(12, Math.floor(parsed)));
-                                  applyFormatWithOptions({ ...formatOptions, indentation });
-                                }}
-                                className="input input-bordered input-xs w-16"
-                                aria-label="Custom indentation"
+                                key={size}
+                                className="join-item btn btn-square"
+                                type="radio"
+                                name="indentation-options"
+                                aria-label={String(size)}
+                                checked={formatOptions.indentation === size}
+                                onChange={() => applyFormatWithOptions({ ...formatOptions, indentation: size })}
                               />
-                            </div>
+                            ))}
+                          </div>
+                          <div className="mt-2 flex items-center gap-2 rounded-md border border-base-300 px-2 py-1">
+                            <span className="text-xs opacity-70">Custom</span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={12}
+                              value={customIndentation}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setCustomIndentation(nextValue);
+                                const parsed = Number(nextValue);
+                                if (!Number.isFinite(parsed)) return;
+                                const indentation = Math.max(0, Math.min(12, Math.floor(parsed)));
+                                applyFormatWithOptions({ ...formatOptions, indentation });
+                              }}
+                              className="input input-bordered input-xs w-16"
+                              aria-label="Custom indentation"
+                            />
                           </div>
                         </div>
                         <div>
                           <p className="mb-2 text-xs font-semibold opacity-70">Quote style</p>
-                          <div className={`join h-7 overflow-hidden rounded-md border ${toolbarBorderClass}`}>
+                          <div className="join">
                             {(["double", "single"] as const).map((quote) => (
-                              <button
+                              <input
                                 key={quote}
-                                type="button"
-                                className={`btn btn-xs join-item h-7 min-h-7 rounded-none border-0 px-2 ${formatOptions.quoteStyle === quote ? "btn-primary" : "btn-ghost"}`}
-                                onClick={() => applyFormatWithOptions({ ...formatOptions, quoteStyle: quote })}
-                              >
-                                {quote === "double" ? "Double" : "Single"}
-                              </button>
+                                className="join-item btn"
+                                type="radio"
+                                name="quote-style-options"
+                                aria-label={quote === "double" ? "Double" : "Single"}
+                                checked={formatOptions.quoteStyle === quote}
+                                onChange={() => applyFormatWithOptions({ ...formatOptions, quoteStyle: quote })}
+                              />
                             ))}
                           </div>
                         </div>

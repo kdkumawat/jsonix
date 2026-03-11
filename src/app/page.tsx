@@ -678,21 +678,20 @@ export default function Home() {
                       <div className="space-y-3">
                         <div>
                           <p className="mb-2 text-xs font-semibold opacity-70">Indentation</p>
-                          <div className="join">
-                            {INDENTATION_OPTIONS.map((size) => (
-                              <input
-                                key={size}
-                                className="join-item btn btn-square"
-                                type="radio"
-                                name="indentation-options"
-                                aria-label={String(size)}
-                                checked={formatOptions.indentation === size}
-                                onChange={() => applyFormatWithOptions({ ...formatOptions, indentation: size })}
-                              />
-                            ))}
-                          </div>
-                          <div className="mt-2 flex items-center gap-2 rounded-md border border-base-300 px-2 py-1">
-                            <span className="text-xs opacity-70">Custom</span>
+                          <div className="flex items-center gap-2">
+                            <div className="join">
+                              {INDENTATION_OPTIONS.map((size) => (
+                                <input
+                                  key={size}
+                                  className="join-item btn btn-square"
+                                  type="radio"
+                                  name="indentation-options"
+                                  aria-label={String(size)}
+                                  checked={formatOptions.indentation === size}
+                                  onChange={() => applyFormatWithOptions({ ...formatOptions, indentation: size })}
+                                />
+                              ))}
+                            </div>
                             <input
                               type="number"
                               min={0}
@@ -706,8 +705,9 @@ export default function Home() {
                                 const indentation = Math.max(0, Math.min(12, Math.floor(parsed)));
                                 applyFormatWithOptions({ ...formatOptions, indentation });
                               }}
-                              className="input input-bordered input-xs w-16"
+                              className="input input-bordered input-sm w-16"
                               aria-label="Custom indentation"
+                              placeholder="Custom"
                             />
                           </div>
                         </div>

@@ -134,7 +134,6 @@ const LANGUAGE_BY_TYPE_TARGET: Record<TypeTargetLanguage, OutputLanguage> = {
   rust: "rust",
 };
 
-const INDENTATION_OPTIONS = [2, 4, 6, 8] as const;
 const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
   indentation: 2,
   quoteStyle: "double",
@@ -170,7 +169,6 @@ export default function Home() {
   const [isDesktopLayout, setIsDesktopLayout] = useState(false);
   const [focusedPane, setFocusedPane] = useState<"input" | "output">("input");
   const [formatOptions, setFormatOptions] = useState<FormatOptions>(DEFAULT_FORMAT_OPTIONS);
-  const [customIndentation, setCustomIndentation] = useState<string>("");
   const [undoStack, setUndoStack] = useState<string[]>([SAMPLE_JSON]);
   const [undoIndex, setUndoIndex] = useState(0);
   const historyLock = useRef(false);
@@ -273,12 +271,11 @@ export default function Home() {
       if (data.rightView) setRightView(data.rightView);
       if (data.formatOptions) {
         const nextIndentation = Number(data.formatOptions.indentation);
-        const indentation = Number.isFinite(nextIndentation) ? Math.max(0, Math.min(12, Math.floor(nextIndentation))) : DEFAULT_FORMAT_OPTIONS.indentation;
+        const indentation = Number.isFinite(nextIndentation) ? Math.max(1, Math.min(10, Math.floor(nextIndentation))) : DEFAULT_FORMAT_OPTIONS.indentation;
         const quoteStyle = data.formatOptions.quoteStyle === "single" ? "single" : "double";
         const sortKeys = Boolean(data.formatOptions.sortKeys);
         const removeEmpty = Boolean(data.formatOptions.removeEmpty);
         setFormatOptions({ indentation, quoteStyle, sortKeys, removeEmpty });
-        setCustomIndentation(INDENTATION_OPTIONS.includes(indentation as (typeof INDENTATION_OPTIONS)[number]) ? "" : String(indentation));
       }
     } catch {
       // Ignore malformed persisted sessions.
@@ -556,7 +553,6 @@ export default function Home() {
 
   const applyFormatWithOptions = (next: FormatOptions) => {
     setFormatOptions(next);
-    setCustomIndentation(INDENTATION_OPTIONS.includes(next.indentation as (typeof INDENTATION_OPTIONS)[number]) ? "" : String(next.indentation));
     setFocusedPane("output");
     setActiveOperation("format");
     executeOperation("format", { formatOptions: next });
@@ -677,39 +673,36 @@ export default function Home() {
                     >
                       <div className="space-y-3">
                         <div>
-                          <p className="mb-2 text-xs font-semibold opacity-70">Indentation</p>
-                          <div className={`join h-9 overflow-hidden rounded-md border ${toolbarBorderClass}`}>
-                            {INDENTATION_OPTIONS.map((size) => (
-                              <input
-                                key={size}
-                                className={`join-item btn btn-sm btn-square h-9 min-h-9 rounded-none border-0 border-r px-0 shadow-none ${toolbarBorderClass}`}
-                                type="radio"
-                                name="indentation-options"
-                                aria-label={String(size)}
-                                checked={formatOptions.indentation === size}
-                                onChange={() => applyFormatWithOptions({ ...formatOptions, indentation: size })}
-                              />
-                            ))}
+                          <div className="mb-2 flex items-center justify-between">
+                            <p className="text-xs font-semibold opacity-70">Indentation</p>
+                            <span className="text-xs font-semibold opacity-80">{formatOptions.indentation}</span>
+                          </div>
+                          <div className="w-full">
                             <input
-                              type="text"
-                              min={0}
-                              max={12}
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={INDENTATION_OPTIONS.includes(formatOptions.indentation as (typeof INDENTATION_OPTIONS)[number]) ? "" : customIndentation}
+                              type="range"
+                              min={1}
+                              max={10}
+                              step={1}
+                              value={formatOptions.indentation}
+                              className="range range-primary range-xs"
+                              aria-label="Indentation level"
                               onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setCustomIndentation(nextValue);
-                                if (!/^\d*$/.test(nextValue)) return;
-                                const parsed = Number(nextValue);
-                                if (!nextValue || !Number.isFinite(parsed)) return;
-                                const indentation = Math.max(0, Math.min(12, Math.floor(parsed)));
+                                const parsed = Number(event.target.value);
+                                if (!Number.isFinite(parsed)) return;
+                                const indentation = Math.max(1, Math.min(10, Math.floor(parsed)));
                                 applyFormatWithOptions({ ...formatOptions, indentation });
                               }}
-                              className="join-item input input-sm h-9 min-h-9 w-14 rounded-none border-0 px-2 text-center shadow-none"
-                              aria-label="Custom indentation"
-                              placeholder="Custom"
                             />
+                            <div className="mt-2 flex justify-between px-1 text-[10px] leading-none opacity-70">
+                              {Array.from({ length: 10 }, (_, index) => (
+                                <span key={`indent-mark-${index + 1}`}>|</span>
+                              ))}
+                            </div>
+                            <div className="mt-1 flex justify-between px-1 text-[10px] leading-none opacity-80">
+                              {Array.from({ length: 10 }, (_, index) => (
+                                <span key={`indent-label-${index + 1}`}>{index + 1}</span>
+                              ))}
+                            </div>
                           </div>
                         </div>
                         <div>

@@ -195,7 +195,7 @@ export default function Home() {
   const outputPanelClass = isDark ? "border-[#2d2d30] bg-[#1e1e1e]" : "border-[#e5e5e5] bg-[#ffffff]";
   const canUndo = undoIndex > 0;
   const canRedo = undoIndex < undoStack.length - 1;
-  const copyLabel = copyState === "done" ? "Copied" : copyState === "error" ? "Copy Failed" : "Copy";
+  const copyLabel = copyState === "done" ? "Copied" : copyState === "error" ? "Failed" : "Copy";
   const selectedTypeLanguageLabel =
     TYPE_LANGUAGES.find((item) => item.id === typeLanguage)?.label ?? "Language";
   const toolbarBtnBase =
@@ -820,7 +820,7 @@ export default function Home() {
               </div>
               <button
                 type="button"
-                className={`${toolbarBtnActive} min-w-[7.5rem] shrink-0 justify-center px-3 disabled:opacity-40`}
+                className={`${toolbarBtnActive} min-w-[5.5rem] shrink-0 justify-center px-3 disabled:opacity-40`}
                 disabled={!canDownload}
                 onClick={copyOutput}
               >

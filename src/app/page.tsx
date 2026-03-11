@@ -170,7 +170,7 @@ export default function Home() {
   const [isDesktopLayout, setIsDesktopLayout] = useState(false);
   const [focusedPane, setFocusedPane] = useState<"input" | "output">("input");
   const [formatOptions, setFormatOptions] = useState<FormatOptions>(DEFAULT_FORMAT_OPTIONS);
-  const [customIndentation, setCustomIndentation] = useState<string>(String(DEFAULT_FORMAT_OPTIONS.indentation));
+  const [customIndentation, setCustomIndentation] = useState<string>("");
   const [undoStack, setUndoStack] = useState<string[]>([SAMPLE_JSON]);
   const [undoIndex, setUndoIndex] = useState(0);
   const historyLock = useRef(false);
@@ -278,7 +278,7 @@ export default function Home() {
         const sortKeys = Boolean(data.formatOptions.sortKeys);
         const removeEmpty = Boolean(data.formatOptions.removeEmpty);
         setFormatOptions({ indentation, quoteStyle, sortKeys, removeEmpty });
-        setCustomIndentation(String(indentation));
+        setCustomIndentation(INDENTATION_OPTIONS.includes(indentation as (typeof INDENTATION_OPTIONS)[number]) ? "" : String(indentation));
       }
     } catch {
       // Ignore malformed persisted sessions.
@@ -556,7 +556,7 @@ export default function Home() {
 
   const applyFormatWithOptions = (next: FormatOptions) => {
     setFormatOptions(next);
-    setCustomIndentation(String(next.indentation));
+    setCustomIndentation(INDENTATION_OPTIONS.includes(next.indentation as (typeof INDENTATION_OPTIONS)[number]) ? "" : String(next.indentation));
     setFocusedPane("output");
     setActiveOperation("format");
     executeOperation("format", { formatOptions: next });
@@ -691,15 +691,18 @@ export default function Home() {
                               />
                             ))}
                             <input
-                              type="number"
+                              type="text"
                               min={0}
                               max={12}
-                              value={customIndentation}
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={INDENTATION_OPTIONS.includes(formatOptions.indentation as (typeof INDENTATION_OPTIONS)[number]) ? "" : customIndentation}
                               onChange={(event) => {
                                 const nextValue = event.target.value;
                                 setCustomIndentation(nextValue);
+                                if (!/^\d*$/.test(nextValue)) return;
                                 const parsed = Number(nextValue);
-                                if (!Number.isFinite(parsed)) return;
+                                if (!nextValue || !Number.isFinite(parsed)) return;
                                 const indentation = Math.max(0, Math.min(12, Math.floor(parsed)));
                                 applyFormatWithOptions({ ...formatOptions, indentation });
                               }}

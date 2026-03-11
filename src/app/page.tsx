@@ -694,14 +694,14 @@ export default function Home() {
                                 applyFormatWithOptions({ ...formatOptions, indentation });
                               }}
                             />
-                            <div className="mt-2 flex justify-between px-1 text-[10px] leading-none opacity-70">
+                            <div className="mt-2 grid grid-cols-10 px-1 text-[10px] leading-none opacity-70">
                               {Array.from({ length: 10 }, (_, index) => (
-                                <span key={`indent-mark-${index + 1}`}>|</span>
+                                <span key={`indent-mark-${index + 1}`} className="text-center">|</span>
                               ))}
                             </div>
-                            <div className="mt-1 flex justify-between px-1 text-[10px] leading-none opacity-80">
+                            <div className="mt-1 grid grid-cols-10 px-1 text-[10px] leading-none tabular-nums opacity-80">
                               {Array.from({ length: 10 }, (_, index) => (
-                                <span key={`indent-label-${index + 1}`}>{index + 1}</span>
+                                <span key={`indent-label-${index + 1}`} className="text-center">{index + 1}</span>
                               ))}
                             </div>
                           </div>
@@ -840,7 +840,7 @@ export default function Home() {
 
         <section
           ref={splitContainerRef}
-          className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0 min-h-[calc(100dvh-11rem)]" : "grid-cols-1 gap-3 xl:grid-cols-[30%_70%]"}`}
+          className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0 min-h-[calc(100dvh-11rem)]" : "grid-cols-1 gap-3 xl:gap-0 xl:grid-cols-[30%_70%]"}`}
           style={isInputMinimized || !isDesktopLayout ? undefined : { gridTemplateColumns: `${split}% ${100 - split}%` }}
         >
           <div

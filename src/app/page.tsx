@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { JsonDiffEditor } from "@/components/JsonDiffEditor";
 import { JsonEditor } from "@/components/JsonEditor";
-import { GraphView } from "@/components/GraphView";
+import { GraphView, type GraphViewRef } from "@/components/GraphView";
 import { TreeView } from "@/components/TreeView";
 import { diffJson } from "@/lib/json/diff";
 import { useJsonWorker } from "@/hooks/useJsonWorker";
@@ -175,8 +175,13 @@ export default function Home() {
   const historyLock = useRef(false);
   const splitContainerRef = useRef<HTMLElement | null>(null);
   const settingsRef = useRef<HTMLDivElement | null>(null);
+  const graphViewRef = useRef<GraphViewRef | null>(null);
 
-  const canDownload = useMemo(() => output.trim().length > 0, [output]);
+  const isGraphView = rightView === "graph" && Boolean(parsedOutput);
+  const canDownload = useMemo(
+    () => (isGraphView ? Boolean(parsedOutput) : output.trim().length > 0),
+    [isGraphView, output, parsedOutput],
+  );
   const isModalInputValid = useMemo(() => {
     if (!modalKind) return false;
     if (!modalValue.trim()) return false;
@@ -526,6 +531,20 @@ export default function Home() {
   };
 
   const downloadOutput = () => {
+    if (isGraphView) {
+      void (async () => {
+        try {
+          if (!graphViewRef.current) {
+            throw new Error("Graph export is not ready yet.");
+          }
+          await graphViewRef.current.downloadPng();
+        } catch {
+          setCopyState("error");
+          window.setTimeout(() => setCopyState("idle"), 1400);
+        }
+      })();
+      return;
+    }
     if (!output.trim()) return;
     const blob = new Blob([output], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -537,6 +556,19 @@ export default function Home() {
   };
 
   const copyOutput = async () => {
+    if (isGraphView) {
+      try {
+        if (!graphViewRef.current) {
+          throw new Error("Graph export is not ready yet.");
+        }
+        await graphViewRef.current.copyPngToClipboard();
+        setCopyState("done");
+      } catch {
+        setCopyState("error");
+      }
+      window.setTimeout(() => setCopyState("idle"), 1400);
+      return;
+    }
     if (!output.trim()) return;
     try {
       await navigator.clipboard.writeText(output);
@@ -942,6 +974,7 @@ export default function Home() {
               {rightView === "graph" ? (
                 parsedOutput ? (
                   <GraphView
+                    ref={graphViewRef}
                     data={parsedOutput}
                     isDark={isDark}
                     className={`${outputPanelClass} min-h-0`}

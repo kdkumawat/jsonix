@@ -28,6 +28,18 @@ import { JsonDiffEditor } from "@/components/JsonDiffEditor";
 import { JsonEditor } from "@/components/JsonEditor";
 import { GraphView, type GraphViewRef } from "@/components/GraphView";
 import { TreeView } from "@/components/TreeView";
+import {
+  Button,
+  EditorPanel,
+  getSizeFormatted,
+  Header as WorkspaceHeader,
+  PanelHeader,
+  StatusBar,
+  Toolbar,
+  ToolbarButton,
+  ToolbarDivider,
+  ToolbarGroup,
+} from "@/components/workspace";
 import { diffJson } from "@/lib/json/diff";
 import { useJsonWorker } from "@/hooks/useJsonWorker";
 import { detectFormat, FORMAT_LABELS, parseInput, type FormatKind } from "@/lib/formats";
@@ -236,20 +248,36 @@ export default function Home() {
   const canRedo = undoIndex < undoStack.length - 1;
   const copyLabel = copyState === "done" ? "Copied" : copyState === "error" ? "Failed" : "Copy";
   const shareLabel = shareState === "done" ? "Copied" : shareState === "error" ? "Failed" : "Share";
+  const inputLineCount = input.split("\n").length;
+  const inputSizeFormatted = getSizeFormatted(input);
   const selectedTypeLanguageLabel =
     TYPE_LANGUAGES.find((item) => item.id === typeLanguage)?.label ?? "Language";
-  const TOOLBAR_BTN_SIZE = "h-8 min-h-8";
-  const TOOLBAR_TEXT = "text-xs";
-  const toolbarBtnBase =
-    `btn btn-xs ${TOOLBAR_BTN_SIZE} rounded px-2 ${TOOLBAR_TEXT} shadow-none text-base-content hover:bg-base-200 disabled:opacity-70 disabled:text-base-content/60`;
-  const toolbarBtnActive =
-    `btn btn-xs btn-primary ${TOOLBAR_BTN_SIZE} rounded px-2 ${TOOLBAR_TEXT} shadow-none text-primary-content hover:bg-primary/90 disabled:opacity-70 disabled:text-primary-content/70`;
-  const toolbarBtnIcon =
-    `btn btn-xs btn-square ${TOOLBAR_BTN_SIZE} min-w-8 rounded px-2 ${TOOLBAR_TEXT} shadow-none text-base-content hover:bg-base-200 disabled:opacity-70 disabled:text-base-content/60`;
+
+  const toolbarBtnBase = useMemo(
+    () =>
+      "btn btn-xs h-8 min-h-8 rounded px-2 text-xs shadow-none text-base-content hover:bg-base-200 disabled:opacity-70 disabled:text-base-content/60 transition-colors duration-150",
+    [],
+  );
+  const toolbarBtnActive = useMemo(
+    () =>
+      "btn btn-xs btn-primary h-8 min-h-8 rounded px-2 text-xs shadow-none text-primary-content hover:bg-primary/90 disabled:opacity-70 disabled:text-primary-content/70 transition-colors duration-150",
+    [],
+  );
+  const toolbarBtnIcon = useMemo(
+    () =>
+      "btn btn-xs btn-square h-8 min-h-8 min-w-8 rounded px-2 text-xs shadow-none text-base-content hover:bg-base-200 disabled:opacity-70 disabled:text-base-content/60",
+    [],
+  );
   const joinItemBorderClass =
     "[&>*:not(:last-child)]:border-r [&>*:not(:last-child)]:!border-base-300/50";
-  const radioGroupClass = `join h-8 shrink-0 overflow-hidden rounded-md ${toolbarBorderClass} ${joinItemBorderClass}`;
-  const radioBtnClass = `btn btn-xs join-item h-8 min-h-8 rounded-none px-2 text-xs shadow-none transition-colors`;
+  const radioGroupClass = useMemo(
+    () => `join h-8 shrink-0 overflow-hidden rounded-md ${toolbarBorderClass} ${joinItemBorderClass}`,
+    [toolbarBorderClass, joinItemBorderClass],
+  );
+  const radioBtnClass = useMemo(
+    () => "btn btn-xs join-item h-8 min-h-8 rounded-none px-2 text-xs shadow-none transition-colors duration-150",
+    [],
+  );
   const dropdownPanelClass = isDark ? "bg-[#252526] text-base-content" : "bg-base-100 text-base-content";
 
   const resolvedInputFormat = useMemo(() => detectFormat(input), [input]);
@@ -413,6 +441,16 @@ editorFontSize?: number;
   const liveTransformTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef(input);
   inputRef.current = input;
+
+  const [showBusy, setShowBusy] = useState(false);
+  useEffect(() => {
+    if (!busy) {
+      setShowBusy(false);
+      return;
+    }
+    const id = setTimeout(() => setShowBusy(true), 120);
+    return () => clearTimeout(id);
+  }, [busy]);
 
   useEffect(() => {
     if (!input.trim()) {
@@ -833,75 +871,32 @@ editorFontSize?: number;
   return (
     <main
       data-theme={resolvedTheme}
-      className="min-h-screen overflow-y-auto bg-base-200 p-3 text-base-content md:p-3 xl:h-screen xl:overflow-hidden"
+      className="flex h-screen flex-col overflow-hidden bg-[var(--workspace-background)] text-[var(--workspace-text)]"
+      style={{ height: "100vh" }}
     >
-      <div className="mx-auto min-h-full max-w-[1700px] flex flex-col xl:h-full">
-        <section className="border border-base-300 bg-base-100 p-1.5 shadow-sm overflow-x-auto">
-          <div className="flex min-w-max flex-wrap items-center gap-1.5">
-            <div className="flex shrink-0 items-center gap-2">
-              <label
-                className={toolbarBtnBase}
-              >
-                Import
-                <input
-                  type="file"
-                  accept=".json,.yaml,.yml,.xml,.toml,.csv,application/json,text/plain,text/yaml,text/xml,text/csv"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    importJsonFile(file);
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-              <button
-                type="button"
-                aria-label="Undo"
-                title="Undo (Cmd/Ctrl+Z)"
-                className={toolbarBtnIcon}
-                disabled={!canUndo}
-                onClick={() => moveHistory(-1)}
-              >
-                <ArrowUturnLeftIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Redo"
-                title="Redo (Shift+Cmd/Ctrl+Z)"
-                className={toolbarBtnIcon}
-                disabled={!canRedo}
-                onClick={() => moveHistory(1)}
-              >
-                <ArrowUturnRightIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Reset"
-                title="Reset to sample"
-                className={toolbarBtnIcon}
-                onClick={() => {
-                  setInput(SAMPLE_JSON);
-                  pushHistory(SAMPLE_JSON);
-                  setOutput("");
-                  setParsedOutput(null);
-                  setError(null);
-                  setActiveOperation(null);
-                  setSplit(20);
-                  setIsInputMinimized(false);
-                  setFocusedPane("input");
-                  setCopyState("idle");
-                }}
-              >
-                <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div
-              aria-hidden="true"
-              className={`h-6 w-px self-center ${toolbarDividerClass}`}
-            />
-
+      <WorkspaceHeader themeMode={themeMode} onThemeChange={setThemeMode} />
+      <Toolbar>
+        <div className="flex min-w-max flex-wrap items-center gap-2">
+          <ToolbarGroup>
+            <ToolbarButton
+              disabled={!canUndo}
+              onClick={() => moveHistory(-1)}
+              title="Undo (Ctrl+Z)"
+            >
+              <ArrowUturnLeftIcon className="h-4 w-4" aria-hidden="true" />
+              Undo
+            </ToolbarButton>
+            <ToolbarButton
+              disabled={!canRedo}
+              onClick={() => moveHistory(1)}
+              title="Redo (Shift+Ctrl+Z)"
+            >
+              <ArrowUturnRightIcon className="h-4 w-4" aria-hidden="true" />
+              Redo
+            </ToolbarButton>
+          </ToolbarGroup>
+          <ToolbarDivider />
+          <ToolbarGroup>
             <div className={radioGroupClass}>
               {FORMAT_KINDS.map((fmt) => (
                 <button
@@ -916,12 +911,9 @@ editorFontSize?: number;
                 </button>
               ))}
             </div>
-
-            <div
-              aria-hidden="true"
-              className={`h-6 w-px self-center ${toolbarDividerClass}`}
-            />
-
+          </ToolbarGroup>
+          <ToolbarDivider />
+          <ToolbarGroup>
             <div className="flex min-w-0 flex-1 shrink-0 items-center gap-2">
               {OPERATION_ACTIONS.map(([label, action]) =>
                 action === "format" ? (
@@ -929,8 +921,8 @@ editorFontSize?: number;
                     <div className={radioGroupClass}>
                       <button
                         type="button"
-                        disabled={busy}
-                        className={`${radioBtnClass} ${
+                        disabled={showBusy}
+                        className={`${radioBtnClass} min-w-[4.5rem] ${
                           activeOperation === action ? "btn-primary" : ""
                         }`}
                         onClick={() => runOperation(action)}
@@ -942,11 +934,11 @@ editorFontSize?: number;
                         aria-label="Format options"
                         popoverTarget="format-options-popover"
                         style={{ anchorName: "--format-options-anchor" } as CSSProperties}
-                        className={`${radioBtnClass} min-w-8 ${
+                        className={`${radioBtnClass} w-8 min-w-8 shrink-0 flex items-center justify-center ${
                           activeOperation === action ? "btn-primary" : ""
                         }`}
                       >
-                        <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
+                        <ChevronDownIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
                       </button>
                     </div>
                     <div
@@ -1038,7 +1030,7 @@ editorFontSize?: number;
                   <button
                     type="button"
                     key={label}
-                    disabled={busy}
+                    disabled={showBusy}
                     className={`${activeOperation === action ? toolbarBtnActive : toolbarBtnBase}`}
                     onClick={() => runOperation(action)}
                   >
@@ -1102,62 +1094,107 @@ editorFontSize?: number;
               </div>
               <button
                 type="button"
-                className={`${toolbarBtnBase} min-w-[5.5rem] shrink-0 gap-1.5`}
+                className={`${toolbarBtnBase} w-[5.5rem] min-w-[5.5rem] shrink-0 gap-1.5`}
                 title="Copy shareable link"
                 onClick={shareWorkspace}
               >
                 <ShareIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="hidden sm:inline">{shareLabel}</span>
+                <span className="hidden sm:inline truncate">{shareLabel}</span>
               </button>
               <button
                 type="button"
-                className={`${toolbarBtnActive} min-w-[5rem] shrink-0 gap-1.5 ${!canDownload ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`${toolbarBtnBase} w-[5.5rem] min-w-[5.5rem] shrink-0 gap-1.5 ${!canDownload ? "opacity-50 cursor-not-allowed" : ""}`}
                 disabled={!canDownload}
                 onClick={copyOutput}
               >
                 <ClipboardDocumentIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {copyLabel}
+                <span className="truncate">{copyLabel}</span>
               </button>
               <button
                 type="button"
-                className={`${toolbarBtnActive} min-w-[5rem] shrink-0 gap-1.5 ${!canDownload ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`${toolbarBtnBase} w-[5.5rem] min-w-[5.5rem] shrink-0 gap-1.5 ${!canDownload ? "opacity-50 cursor-not-allowed" : ""}`}
                 disabled={!canDownload}
                 onClick={downloadOutput}
               >
                 <ArrowDownTrayIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                Download
+                <span className="truncate">Download</span>
               </button>
             </div>
+          </ToolbarGroup>
           </div>
-        </section>
+      </Toolbar>
 
-        <section
-          ref={splitContainerRef}
-          className={`relative flex-1 min-h-0 grid ${isInputMinimized ? "grid-cols-1 gap-0 min-h-[calc(100dvh-11rem)]" : "grid-cols-1 gap-3 xl:gap-0 xl:grid-cols-[20%_80%]"}`}
-          style={isInputMinimized || !isDesktopLayout ? undefined : { gridTemplateColumns: `${split}% ${100 - split}%` }}
-        >
-          <div
-            className={`absolute top-0 bottom-0 z-20 items-center ${isInputMinimized ? "hidden" : "hidden xl:flex"}`}
-            style={{ left: `${split}%`, transform: "translateX(-50%)" }}
+      <div className="flex min-h-0 flex-1 grid-cols-1 gap-4 overflow-auto p-8 lg:grid lg:grid-cols-2">
+          <EditorPanel
+            header={
+              <PanelHeader
+                title="Input JSON"
+                actions={
+                  <>
+                    <input
+                      id="import-json-file"
+                      type="file"
+                      accept=".json,.yaml,.yml,.xml,.toml,.csv,application/json,text/plain"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          importJsonFile(file);
+                          e.currentTarget.value = "";
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={() => document.getElementById("import-json-file")?.click()}
+                    >
+                      Paste
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setInput(SAMPLE_JSON);
+                        pushHistory(SAMPLE_JSON);
+                        setError(null);
+                      }}
+                    >
+                      Load Sample
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setInput("");
+                        setOutput("");
+                        setParsedOutput(null);
+                        setError(null);
+                        setActiveOperation(null);
+                        setCopyState("idle");
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </>
+                }
+              />
+            }
           >
-            <div className="h-full w-px bg-base-300" />
-            <button
-              type="button"
-              className="absolute inset-y-0 -left-2 w-4 cursor-col-resize bg-transparent"
-              aria-label="Resize panels by dragging divider"
-              onMouseDown={(event) => {
-                event.preventDefault();
-                if (isInputMinimized) setIsInputMinimized(false);
-                setIsResizing(true);
-              }}
-            />
-          </div>
-
-          {!isInputMinimized ? (
-            <div
-              className={`flex min-h-[45vh] flex-col transition-all xl:min-h-0 ${focusedPane === "input" ? "opacity-100" : "opacity-60 saturate-50"}`}
-              onMouseDown={() => setFocusedPane("input")}
-            >
+            {!input.trim() ? (
+              <div className="flex h-[360px] flex-col items-center justify-center gap-4 rounded-b-[10px] bg-[var(--workspace-panel)] p-4 text-center text-sm text-[var(--workspace-text-muted)]">
+                <p>Paste JSON here</p>
+                <p className="text-xs">or</p>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setInput(SAMPLE_JSON);
+                    pushHistory(SAMPLE_JSON);
+                    setError(null);
+                  }}
+                >
+                  Load Sample JSON
+                </Button>
+              </div>
+            ) : (
+              <>
               <JsonEditor
                 value={input}
                 onChange={(next) => {
@@ -1165,7 +1202,7 @@ editorFontSize?: number;
                   pushHistory(next);
                   setFocusedPane("input");
                 }}
-                className="h-full min-h-0 flex-1 p-1"
+                className="h-full min-h-0 flex-1 p-4"
                 language={resolvedInputFormat === "toml" || resolvedInputFormat === "csv" ? "plaintext" : resolvedInputFormat}
                 monacoTheme={monacoTheme}
                 placeholder="Paste or drop JSON here"
@@ -1256,26 +1293,50 @@ editorFontSize?: number;
                   </ul>
                 </div>
               </div>
-            </div>
-          ) : null}
+              </>
+            )}
+          </EditorPanel>
 
-          <div
-            className={`relative flex flex-col xl:min-h-0 ${isInputMinimized ? "min-h-full" : "min-h-[45vh]"}`}
-            onMouseDown={() => setFocusedPane("output")}
+          <EditorPanel
+            header={
+              <PanelHeader
+                title="Output"
+                actions={
+                  <>
+                    <div className={`join overflow-hidden rounded-lg border ${toolbarBorderClass} ${joinItemBorderClass}`}>
+                      {(["raw", "tree", "graph"] as const).map((view) => (
+                        <button
+                          key={view}
+                          type="button"
+                          disabled={(view === "tree" || view === "graph") && !parsedOutput}
+                          className={`btn btn-xs join-item h-8 min-h-8 rounded-none px-2 text-xs ${rightView === view ? "btn-primary" : ""} disabled:opacity-50`}
+                          onClick={() => setRightView(view)}
+                        >
+                          {view[0].toUpperCase() + view.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      disabled={!canDownload}
+                      onClick={copyOutput}
+                    >
+                      <ClipboardDocumentIcon className="h-4 w-4" aria-hidden="true" />
+                      {copyLabel}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={!canDownload}
+                      onClick={downloadOutput}
+                    >
+                      <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
+                      Download
+                    </Button>
+                  </>
+                }
+              />
+            }
           >
-            <button
-              type="button"
-              aria-label={isInputMinimized ? "Restore input panel" : "Maximize output panel"}
-              title={isInputMinimized ? "Restore input panel" : "Maximize output panel"}
-              className={`${toolbarBtnIcon} absolute right-2 top-2 z-20`}
-              onClick={toggleInputMinimized}
-            >
-              {isInputMinimized ? (
-                <ArrowsPointingInIcon className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <ArrowsPointingOutIcon className="h-4 w-4" aria-hidden="true" />
-              )}
-            </button>
             <div className="flex-1 min-h-0">
               {rightView === "raw" ? (
                 activeOperation === "diff" && diffPreview ? (
@@ -1300,8 +1361,8 @@ editorFontSize?: number;
                     fontSize={editorFontSize}
                   />
                 ) : (
-                  <div className={`flex h-full min-h-0 items-center justify-center border text-sm text-base-content/70 ${outputPanelClass}`}>
-                    Run any operation to see output here
+                  <div className="flex h-full min-h-[360px] items-center justify-center rounded-b-[10px] bg-[var(--workspace-panel)] text-sm text-[var(--workspace-text-muted)]">
+                    Run an operation to see output here
                   </div>
                 )
               ) : null}
@@ -1333,9 +1394,15 @@ editorFontSize?: number;
                 )
               ) : null}
             </div>
-          </div>
-        </section>
+          </EditorPanel>
+      </div>
 
+      <StatusBar
+        valid={inputValid}
+        errorMessage={error}
+        lineCount={inputLineCount}
+        sizeFormatted={inputSizeFormatted}
+      />
 
         {modalKind ? (
           <div className="modal modal-open">
@@ -1412,25 +1479,25 @@ editorFontSize?: number;
 
         <div className="fixed bottom-6 right-6 z-40" ref={settingsRef}>
           {isSettingsOpen ? (
-            <div className="absolute rounded-md bottom-full right-0 mb-2 w-[320px] border border-base-300 bg-base-100 p-3 shadow-xl">
-              <div className="mb-2 rounded-md border border-base-300 bg-base-200 px-2 py-1.5">
-                <p className="text-base font-bold leading-tight">jsonix</p>
-                <p className="text-sm leading-tight text-base-content/70">
+            <div className="absolute bottom-full right-0 mb-2 w-[300px] rounded-xl border border-base-300 bg-base-100 p-4 shadow-xl">
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-base-content">jsonix</p>
+                <p className="text-xs text-base-content/60 mt-0.5">
                   Local-first JSON transform and validation workspace
                 </p>
               </div>
-              <p className="mb-2 text-xs font-semibold tracking-wide text-base-content/70">
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-base-content/60">
                 Theme
               </p>
-              <div className={`join overflow-hidden rounded-md border ${toolbarBorderClass} ${joinItemBorderClass}`}>
+              <div className={`join overflow-hidden rounded-lg border ${toolbarBorderClass} ${joinItemBorderClass} mb-4`}>
                 {themeOptions.map(({ mode, ariaLabel, title, Icon }) => (
                   <button
                     key={mode}
                     type="button"
                     aria-label={ariaLabel}
                     title={title}
-                    className={`btn btn-sm btn-soft join-item btn-square min-w-9 h-9 min-h-9 rounded-none transition-colors ${
-                      themeMode === mode ? "btn-primary" : ""
+                    className={`btn btn-sm join-item btn-square min-w-10 h-9 min-h-9 rounded-none transition-colors duration-150 ${
+                      themeMode === mode ? "btn-primary text-primary-content" : "btn-ghost hover:bg-base-200"
                     }`}
                     onClick={() => setThemeMode(mode)}
                   >
@@ -1439,33 +1506,30 @@ editorFontSize?: number;
                 ))}
               </div>
 
-              <p className="mt-4 mb-2 text-xs font-semibold tracking-wide text-base-content/70">
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-base-content/60">
                 Font size
               </p>
-              <div className={`join overflow-hidden rounded-md border ${toolbarBorderClass} ${joinItemBorderClass}`}>
+              <div className={`join overflow-hidden rounded-lg border ${toolbarBorderClass} ${joinItemBorderClass}`}>
                 <button
                   type="button"
                   aria-label="Decrease font size"
                   title="Decrease font size"
-                  className="btn btn-sm btn-soft join-item btn-square min-w-9 h-9 min-h-9 rounded-none transition-colors"
+                  className="btn btn-sm btn-ghost join-item btn-square min-w-9 h-9 min-h-9 rounded-none hover:bg-base-200 transition-colors duration-150"
                   onClick={() => setEditorFontSize((size) => Math.max(10, size - 1))}
                 >
                   <MinusIcon className="h-4 w-4" aria-hidden="true" />
                 </button>
-                <button
-                  type="button"
-                  aria-label="Current font size"
-                  title="Current font size"
-                  className="btn btn-sm btn-soft join-item btn-square min-w-[3.5rem] h-9 min-h-9 rounded-none disabled:opacity-70 disabled:text-base-content/60"
-                  disabled
+                <span
+                  className="join-item flex min-w-[3.25rem] items-center justify-center bg-base-200/80 px-2 text-sm font-medium tabular-nums"
+                  aria-hidden
                 >
                   {editorFontSize}
-                </button>
+                </span>
                 <button
                   type="button"
                   aria-label="Increase font size"
                   title="Increase font size"
-                  className="btn btn-sm btn-soft join-item btn-square min-w-9 h-9 min-h-9 rounded-none transition-colors"
+                  className="btn btn-sm btn-ghost join-item btn-square min-w-9 h-9 min-h-9 rounded-none hover:bg-base-200 transition-colors duration-150"
                   onClick={() => setEditorFontSize((size) => Math.min(24, size + 1))}
                 >
                   <PlusIcon className="h-4 w-4" aria-hidden="true" />
@@ -1474,7 +1538,7 @@ editorFontSize?: number;
                   type="button"
                   aria-label="Reset font size"
                   title="Reset font size"
-                  className="btn btn-sm btn-soft join-item btn-square min-w-9 h-9 min-h-9 rounded-none transition-colors"
+                  className="btn btn-sm btn-ghost join-item btn-square min-w-9 h-9 min-h-9 rounded-none hover:bg-base-200 transition-colors duration-150"
                   onClick={() => setEditorFontSize(13)}
                 >
                   <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
@@ -1486,14 +1550,12 @@ editorFontSize?: number;
             type="button"
             aria-label="Open settings"
             title="Settings"
-            className="btn btn-primary btn-circle shadow-lg"
+            className="btn btn-primary btn-circle shadow-lg hover:opacity-90 transition-opacity"
             onClick={() => setIsSettingsOpen((s) => !s)}
           >
             <Cog6ToothIcon className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-
-      </div>
     </main>
   );
 }

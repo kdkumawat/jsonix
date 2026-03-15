@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownTrayIcon,
@@ -41,7 +40,7 @@ import type { JsonValue, TypeTargetLanguage } from "@/lib/json/core";
 
 const SAMPLE_JSON = `{
   "id": 42,
-  "name": "jsonix",
+  "name": "formaty",
   "tags": ["json", "tooling", "productivity"],
   "owner": {
     "team": "platform",
@@ -57,7 +56,7 @@ const SAMPLE_JSON = `{
 const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <root>
   <id>42</id>
-  <name>jsonix</name>
+  <name>formaty</name>
   <tags>
     <item>json</item>
     <item>tooling</item>
@@ -66,7 +65,7 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 </root>`;
 
 const SAMPLE_YAML = `id: 42
-name: jsonix
+name: formaty
 tags:
   - json
   - tooling
@@ -82,11 +81,11 @@ metrics:
     count: 1290`;
 
 const SAMPLE_CSV = `id,name,tags
-42,jsonix,"json,tooling"
+42,formaty,"json,tooling"
 1,example,"a,b,c"`;
 
 const SAMPLE_TOML = `id = 42
-name = "jsonix"
+name = "formaty"
 tags = ["json", "tooling"]
 
 [owner]
@@ -102,7 +101,6 @@ const SAMPLES: Record<FormatKind, string> = {
 };
 
 const OPERATION_ACTIONS = [
-  ["Format", "format"],
   ["Minify", "minify"],
   ["Flatten", "flatten"],
   ["Unflatten", "unflatten"],
@@ -126,7 +124,7 @@ const TYPE_LANGUAGES: Array<{ id: TypeTargetLanguage; label: string; ext: string
   { id: "sql", label: "SQL", ext: "sql" },
 ];
 
-type OperationAction = (typeof OPERATION_ACTIONS)[number][1] | "sort" | "removeEmpty" | "generateTypes";
+type OperationAction = (typeof OPERATION_ACTIONS)[number][1] | "format" | "sort" | "removeEmpty" | "generateTypes";
 type OutputLanguage =
   | "json"
   | "yaml"
@@ -243,16 +241,21 @@ export default function Home() {
   const [inputFormatOpen, setInputFormatOpen] = useState(false);
   const [transformConfigOpen, setTransformConfigOpen] = useState(false);
   const [pinnedItems, setPinnedItems] = useState<Set<string>>(
-    () => new Set(["fmt:json", "fmt:xml", "view:raw", "action:minify", "action:schema", "type:typescript", "type:java", "type:go", "type:python", "type:sql"])
+    () => new Set(["fmt:json", "fmt:xml", "view:raw", "view:graph", "action:minify", "action:schema", "type:typescript", "type:java", "type:go", "type:python", "type:sql"])
   );
   const [liveTransform, setLiveTransform] = useState(false);
   const [editorFontSize, setEditorFontSize] = useState(13);
   const [inputValid, setInputValid] = useState<boolean | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<string[]>([""]);
   const [undoIndex, setUndoIndex] = useState(0);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [actionBounce, setActionBounce] = useState<"share" | "copy" | null>(null);
+  const [mobileShowOutput, setMobileShowOutput] = useState(false);
   const historyLock = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement | null>(null);
   const graphViewRef = useRef<GraphViewRef | null>(null);
+  const diffDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isGraphView = rightView === "graph" && Boolean(parsedOutput);
   const canDownload = useMemo(
@@ -394,7 +397,7 @@ export default function Home() {
       if (typeof state.split === "number") setSplit(Math.max(20, Math.min(80, state.split)));
       return;
     }
-    const raw = localStorage.getItem("jsonix-session");
+    const raw = localStorage.getItem("formaty-session");
     if (!raw) return;
     try {
       const data = JSON.parse(raw) as {
@@ -435,7 +438,7 @@ export default function Home() {
 
   useEffect(() => {
     localStorage.setItem(
-      "jsonix-session",
+      "formaty-session",
       JSON.stringify({
         input,
         output,
@@ -458,11 +461,17 @@ export default function Home() {
       return;
     }
     try {
-      setParsedOutput(JSON.parse(output) as JsonValue);
+      if (outputLanguage === "json") {
+        setParsedOutput(JSON.parse(output) as JsonValue);
+      } else if (["xml", "yaml", "toml", "csv"].includes(outputLanguage)) {
+        setParsedOutput(parseInput(output, outputLanguage as FormatKind) as JsonValue);
+      } else {
+        setParsedOutput(null);
+      }
     } catch {
       setParsedOutput(null);
     }
-  }, [output]);
+  }, [output, outputLanguage]);
 
   useEffect(() => {
     if ((rightView === "tree" || rightView === "graph") && !parsedOutput) {
@@ -488,12 +497,19 @@ export default function Home() {
   useEffect(() => {
     if (!input.trim()) {
       setInputValid(null);
+      setValidationError(null);
       return;
     }
     validationTimeoutRef.current = setTimeout(() => {
       run("parseFormat", { input, format: resolvedInputFormat })
-        .then(() => setInputValid(true))
-        .catch(() => setInputValid(false));
+        .then(() => {
+          setInputValid(true);
+          setValidationError(null);
+        })
+        .catch((e) => {
+          setInputValid(false);
+          setValidationError(e instanceof Error ? e.message : `Invalid ${FORMAT_LABELS[resolvedInputFormat]}`);
+        });
     }, 300);
     return () => {
       if (validationTimeoutRef.current) clearTimeout(validationTimeoutRef.current);
@@ -624,22 +640,27 @@ export default function Home() {
     return run<string>("convert", { json, toFormat, formatOptions: formatOpts });
   };
 
-  const parseOnly = () => {
+  const parseOnly = (inputOverride?: string, formatOverride?: FormatKind) => {
+    const text = inputOverride ?? input;
+    const fmt = formatOverride ?? resolvedInputFormat;
+    if (!text.trim()) return;
     setBusy(true);
     setError(null);
+    setValidationError(null);
     setDiffPreview(null);
     void (async () => {
       try {
         const json = await run<JsonValue>("parseFormat", {
-          input,
-          format: resolvedInputFormat,
+          input: text,
+          format: fmt,
         });
         const result = await convertJsonToOutput(json);
         setOutputData(result, "parse");
         setParsedOutput(json);
         setActiveOperation(null);
+        if (!isDesktopLayout) setMobileShowOutput(true);
       } catch (e) {
-        setError(e instanceof Error ? e.message : `Invalid ${FORMAT_LABELS[resolvedInputFormat]}`);
+        setError(e instanceof Error ? e.message : `Invalid ${FORMAT_LABELS[fmt]}`);
       } finally {
         setBusy(false);
       }
@@ -657,7 +678,7 @@ export default function Home() {
   ) => {
     setBusy(true);
     setError(null);
-    setDiffPreview(null);
+    if (action !== "diff") setDiffPreview(null);
     void (async () => {
       try {
         const left = await run<JsonValue>("parseFormat", {
@@ -689,7 +710,7 @@ export default function Home() {
           });
           const leftStr = await convertJsonToOutput(left);
           const rightStr = await convertJsonToOutput(right);
-          setDiffPreview({ original: leftStr, modified: rightStr });
+          setDiffPreview({ original: leftStr, modified: compareText });
           setRightView("raw");
           const result = diffJson(left, right);
           const out = await convertJsonToOutput(result as unknown as JsonValue);
@@ -755,6 +776,7 @@ export default function Home() {
   const runConvert = (toFormat: FormatKind) => {
     setConvertToFormat(toFormat);
     setFocusedPane("output");
+    if (!isDesktopLayout) setMobileShowOutput(true);
     setBusy(true);
     setError(null);
     void (async () => {
@@ -777,8 +799,27 @@ export default function Home() {
     })();
   };
 
+  const handleDiffModifiedChange = useCallback(
+    (value: string) => {
+      setCompareInput(value);
+      setDiffPreview((prev) => (prev ? { ...prev, modified: value } : null));
+      if (diffDebounceRef.current) clearTimeout(diffDebounceRef.current);
+      if (!value.trim()) return;
+      diffDebounceRef.current = setTimeout(() => {
+        diffDebounceRef.current = null;
+        executeOperation("diff", { compareText: value });
+      }, 400);
+    },
+    [executeOperation],
+  );
+
+  useEffect(() => () => {
+    if (diffDebounceRef.current) clearTimeout(diffDebounceRef.current);
+  }, []);
+
   const runOperation = (action: OperationAction) => {
     setFocusedPane("output");
+    if (!isDesktopLayout) setMobileShowOutput(true);
     setActiveOperation(action);
     if (action === "validate") {
       setModalKind("validate");
@@ -786,28 +827,48 @@ export default function Home() {
       return;
     }
     if (action === "diff") {
-      setModalKind("diff");
-      setModalValue(compareInput);
-      setDiffPreview(null);
+      setIsOutputMaximized(true);
+      setRightView("raw");
+      setBusy(true);
+      setError(null);
+      void (async () => {
+        try {
+          const left = await run<JsonValue>("parseFormat", {
+            input,
+            format: resolvedInputFormat,
+          });
+          const leftStr = await convertJsonToOutput(left);
+          setDiffPreview({ original: leftStr, modified: compareInput });
+          if (compareInput.trim()) {
+            executeOperation("diff", { compareText: compareInput });
+          } else {
+            setBusy(false);
+          }
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Operation failed.");
+          setBusy(false);
+        }
+      })();
       return;
     }
     executeOperation(action);
   };
 
-  const downloadOutput = () => {
+  const downloadOutput = (format?: "png" | "jpg") => {
     if (isGraphView) {
       void (async () => {
         try {
           if (!graphViewRef.current) {
             throw new Error("Graph export is not ready yet.");
           }
-          await graphViewRef.current.downloadPng();
+          await graphViewRef.current.downloadImage(format ?? "png");
         } catch (e) {
           console.warn("Graph download failed:", e);
           setCopyState("error");
           window.setTimeout(() => setCopyState("idle"), 1400);
         }
       })();
+      setDownloadMenuOpen(false);
       return;
     }
     if (!output.trim()) return;
@@ -815,12 +876,15 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `jsonix-output.${outputExt}`;
+    a.download = `formaty-output.${outputExt}`;
     a.click();
     URL.revokeObjectURL(url);
+    setDownloadMenuOpen(false);
   };
 
   const shareWorkspace = async () => {
+    setActionBounce("share");
+    setTimeout(() => setActionBounce(null), 300);
     const state = encodeState({
       input,
       convertToFormat,
@@ -842,6 +906,8 @@ export default function Home() {
   };
 
   const copyOutput = async () => {
+    setActionBounce("copy");
+    setTimeout(() => setActionBounce(null), 300);
     if (isGraphView) {
       try {
         if (!graphViewRef.current) {
@@ -895,6 +961,7 @@ export default function Home() {
         pushHistory(formatted);
         setInputFormatOverride(newFormat === detectedInputFormat ? null : newFormat);
         setError(null);
+        setValidationError(null);
       } catch {
         setInputFormatOverride(newFormat === detectedInputFormat ? null : newFormat);
       }
@@ -911,6 +978,8 @@ export default function Home() {
         pushHistory(text);
         setInputFormatOverride(null);
         setError(null);
+        setValidationError(null);
+        parseOnly(text, detectFormat(text));
       } else {
         setOutput(text);
       }
@@ -927,6 +996,7 @@ export default function Home() {
       pushHistory(text);
       setInputFormatOverride(null);
       setError(null);
+      parseOnly(text, detectFormat(text));
     };
     reader.onerror = () => setError("Unable to read selected file.");
     reader.readAsText(file);
@@ -935,23 +1005,21 @@ export default function Home() {
   return (
     <main
       data-theme={resolvedTheme}
-      className="flex h-screen flex-col overflow-hidden bg-[var(--workspace-background)] text-[var(--workspace-text)]"
-      style={{ height: "100vh" }}
+      className="flex flex-col overflow-hidden bg-[var(--workspace-background)] text-[var(--workspace-text)]"
+      style={{ height: "100dvh", minHeight: "100dvh", maxHeight: "100dvh" }}
     >
       <WorkspaceHeader
         themeMode={themeMode}
         onThemeChange={setThemeMode}
-        editorFontSize={editorFontSize}
-        onEditorFontSizeChange={setEditorFontSize}
       />
 
       <div
         ref={splitContainerRef}
         className={`flex min-h-0 flex-1 overflow-hidden ${isDesktopLayout && !isOutputMaximized ? "flex-row" : "flex-col"}`}
       >
-        {!isOutputMaximized && (
+        {!isOutputMaximized && (!isDesktopLayout ? !mobileShowOutput : true) && (
         <div
-          className={`flex min-h-0 shrink-0 flex-col overflow-hidden transition-opacity duration-200 ${
+          className={`flex min-h-0 shrink-0 flex-col overflow-hidden bg-[var(--workspace-background)] transition-opacity duration-200 ${
             focusedPane === "output" ? "opacity-60" : "opacity-100"
           }`}
           style={isDesktopLayout ? { width: `${split}%`, minWidth: 160 } : undefined}
@@ -987,6 +1055,7 @@ export default function Home() {
                   setOutput("");
                   setParsedOutput(null);
                   setError(null);
+        setValidationError(null);
                   setActiveOperation(null);
                   setCopyState("idle");
                 }}
@@ -1032,21 +1101,24 @@ export default function Home() {
           >
             {!input.trim() ? (
               <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-4 p-4 text-center text-sm text-[var(--workspace-text-muted)]">
-                <p className="max-w-[16rem] sm:max-w-none">Paste or import JSON, XML, YAML, TOML, or CSV here</p>
-                <div className="flex flex-wrap items-center justify-center gap-1">
-                  {(["json", "xml", "yaml", "csv"] as const).map((fmt) => (
+                <p className="max-w-[16rem] sm:max-w-none">Paste or import or click sample input</p>
+                <div className="flex flex-nowrap items-center justify-center gap-2 overflow-x-auto w-full max-w-full px-2">
+                  {(["json", "xml", "yaml", "toml", "csv"] as const).map((fmt) => (
                     <button
                       key={fmt}
                       type="button"
                       className="btn btn-ghost btn-xs rounded p-1 border-0 hover:bg-[var(--workspace-panel)] hover:underline hover:text-primary transition-colors"
                       onClick={() => {
-                        setInput(SAMPLES[fmt]);
-                        pushHistory(SAMPLES[fmt]);
+                        const sample = SAMPLES[fmt];
+                        setInput(sample);
+                        pushHistory(sample);
                         setInputFormatOverride(null);
                         setError(null);
+        setValidationError(null);
+                        parseOnly(sample, fmt);
                       }}
                     >
-                      Load sample {FORMAT_LABELS[fmt]}
+                      {FORMAT_LABELS[fmt]}
                     </button>
                   ))}
                 </div>
@@ -1074,16 +1146,30 @@ export default function Home() {
           <div
             role="separator"
             aria-orientation="vertical"
-            className="w-px shrink-0 cursor-col-resize bg-[var(--workspace-border)] hover:bg-primary/30 transition-colors"
+            className="group relative flex shrink-0 cursor-col-resize justify-center transition-colors"
             onMouseDown={() => setIsResizing(true)}
-          />
+          >
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-px bg-[var(--workspace-border)] opacity-60 group-hover:opacity-100 group-hover:bg-primary group-hover:w-[3px] group-hover:-ml-0.5 transition-all" />
+          </div>
         )}
         <div
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--workspace-background)] ${!isDesktopLayout && !mobileShowOutput ? "hidden" : ""}`}
           style={isDesktopLayout && !isOutputMaximized ? { width: `${100 - split}%` } : undefined}
         >
+          {!isDesktopLayout && mobileShowOutput && (
+            <button
+              type="button"
+              className="shrink-0 border-b px-2 py-1.5 text-xs text-primary hover:bg-[var(--workspace-panel)]"
+              onClick={() => {
+                setMobileShowOutput(false);
+                setIsOutputMaximized(false);
+              }}
+            >
+              ← Back to input
+            </button>
+          )}
           <div
-            className={`flex shrink-0 flex-wrap items-center gap-1 border-b px-1.5 py-1 text-xs sm:flex-nowrap sm:overflow-x-auto ${inputEditorBgClass} ${isDark ? "text-gray-400" : "text-gray-600"}`}
+            className={`flex shrink-0 flex-nowrap items-center gap-1 overflow-x-auto border-b px-1.5 py-1 text-xs ${inputEditorBgClass} ${isDark ? "text-gray-400" : "text-gray-600"}`}
           >
             <button
               type="button"
@@ -1101,7 +1187,7 @@ export default function Home() {
               side="bottom"
               align="start"
               rootClassName="shrink-0"
-              contentClassName={`w-80 rounded-lg border p-3 shadow-xl ${toolbarBorderClass} ${dropdownPanelClass}`}
+              contentClassName={`w-full max-w-[18rem] sm:w-84 rounded-lg border p-3 shadow-xl ${toolbarBorderClass} ${dropdownPanelClass}`}
               trigger={
                 <div
                   className={`${linkBtnClass} flex h-7 min-h-7 shrink-0 items-center justify-center ${
@@ -1208,20 +1294,64 @@ export default function Home() {
                 </div>
                 </div>
                 <div className="border-t border-[var(--workspace-border)] pt-2">
-                <div className="flex w-fit shrink-0 items-center justify-between gap-2">
-                  <p className="text-xs font-medium opacity-70">Indent</p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-xs font-medium opacity-70">Font size</p>
                   <button
                     type="button"
                     className={`btn btn-ghost btn-xs btn-square h-5 w-5 p-0 rounded ${
-                      pinnedItems.has("indent") ? "text-primary" : "opacity-40"
+                      pinnedItems.has("fontSize") ? "text-primary" : "opacity-40"
                     }`}
-                    onClick={() => setPinnedItems((s) => { const n = new Set(s); n.has("indent") ? n.delete("indent") : n.add("indent"); return n; })}
-                    title={pinnedItems.has("indent") ? "Unpin" : "Pin to toolbar"}
+                    onClick={() => setPinnedItems((s) => { const n = new Set(s); n.has("fontSize") ? n.delete("fontSize") : n.add("fontSize"); return n; })}
+                    title={pinnedItems.has("fontSize") ? "Unpin" : "Pin to toolbar"}
                   >
-                    <StarIcon className={`h-3.5 w-3.5 ${pinnedItems.has("indent") ? "text-primary" : "opacity-40"}`} />
+                    <StarIcon className={`h-3.5 w-3.5 ${pinnedItems.has("fontSize") ? "text-primary" : "opacity-40"}`} />
                   </button>
                 </div>
-                <div className="flex w-fit shrink-0 items-center rounded-lg border border-[var(--workspace-border)] overflow-hidden [&>*:not(:last-child)]:border-r [&>*:not(:last-child)]:border-[var(--workspace-border)]">
+                <div className="flex w-fit shrink-0 items-center rounded-lg border border-[var(--workspace-border)] overflow-hidden [&>*:not(:last-child)]:border-r [&>*:not(:last-child)]:border-[var(--workspace-border)] mb-2">
+                  <button
+                    type="button"
+                    aria-label="Decrease font size"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors"
+                    onClick={() => setEditorFontSize((s) => Math.max(10, s - 1))}
+                  >
+                    <MinusIcon className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  <span className="flex shrink-0 items-center justify-center px-1 py-0.5 text-xs tabular-nums text-[var(--workspace-text)] border-r border-[var(--workspace-border)] min-w-[2rem]">
+                    {editorFontSize}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Increase font size"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors"
+                    onClick={() => setEditorFontSize((s) => Math.min(24, s + 1))}
+                  >
+                    <PlusIcon className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Reset font size"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors"
+                    onClick={() => setEditorFontSize(13)}
+                  >
+                    <ArrowPathIcon className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </div>
+                </div>
+                <div className="border-t border-[var(--workspace-border)] pt-2">
+                <div className="flex w-fit shrink-0 items-center justify-between gap-2">
+                  <p className="text-xs font-medium opacity-70">Indent</p>
+                    <button
+                      type="button"
+                      className={`btn btn-ghost btn-xs btn-square h-5 w-5 p-0 rounded ${
+                        pinnedItems.has("indent") ? "text-primary" : "opacity-40"
+                      }`}
+                      onClick={() => setPinnedItems((s) => { const n = new Set(s); n.has("indent") ? n.delete("indent") : n.add("indent"); return n; })}
+                      title={pinnedItems.has("indent") ? "Unpin" : "Pin to toolbar"}
+                    >
+                      <StarIcon className={`h-3.5 w-3.5 ${pinnedItems.has("indent") ? "text-primary" : "opacity-40"}`} />
+                    </button>
+                  </div>
+                  <div className="flex w-fit shrink-0 items-center rounded-lg border border-[var(--workspace-border)] overflow-hidden [&>*:not(:last-child)]:border-r [&>*:not(:last-child)]:border-[var(--workspace-border)]">
                   <button
                     type="button"
                     aria-label="Decrease indent"
@@ -1333,6 +1463,22 @@ export default function Home() {
                   ))}
                 </div>
                 </div>
+                <div className="border-t border-[var(--workspace-border)] pt-2">
+                  <button
+                    type="button"
+                    className={`${linkBtnClass} flex w-full items-center justify-center gap-1.5 py-1.5`}
+                    onClick={() => {
+                      setFormatOptions(DEFAULT_FORMAT_OPTIONS);
+                      setConvertToFormat("json");
+                      setRightView("raw");
+                      setEditorFontSize(13);
+                      setTransformConfigOpen(false);
+                    }}
+                  >
+                    <ArrowPathIcon className="h-3.5 w-3.5" />
+                    Reset to default
+                  </button>
+                </div>
               </div>
             </Dropdown>
             {FORMAT_KINDS.some((f) => pinnedItems.has(`fmt:${f}`)) && (
@@ -1385,6 +1531,24 @@ export default function Home() {
                 {label}
               </button>
             ))}
+            {pinnedItems.has("fontSize") && (
+              <>
+              <span className="mx-1 h-4 w-px shrink-0 self-center bg-[var(--workspace-text-muted)]/60" role="separator" aria-hidden />
+              <div className="flex w-fit shrink-0 items-center rounded-lg border border-[var(--workspace-border)] overflow-hidden [&>*:not(:last-child)]:border-r [&>*:not(:last-child)]:border-[var(--workspace-border)]">
+                <span className="px-1.5 py-0.5 text-xs opacity-70 border-r border-[var(--workspace-border)]">Font</span>
+                <button type="button" aria-label="Decrease font size" className="flex h-7 w-7 shrink-0 items-center justify-center p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors" onClick={() => setEditorFontSize((s) => Math.max(10, s - 1))}>
+                  <MinusIcon className="h-3 w-3" aria-hidden />
+                </button>
+                <span className="flex shrink-0 items-center justify-center px-1 py-0.5 text-xs tabular-nums border-r border-[var(--workspace-border)]">{editorFontSize}</span>
+                <button type="button" aria-label="Increase font size" className="flex h-7 w-7 shrink-0 items-center justify-center p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors" onClick={() => setEditorFontSize((s) => Math.min(24, s + 1))}>
+                  <PlusIcon className="h-3 w-3" aria-hidden />
+                </button>
+                <button type="button" aria-label="Reset font size" className="flex h-7 w-7 shrink-0 items-center justify-center p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors" onClick={() => setEditorFontSize(13)}>
+                  <ArrowPathIcon className="h-3 w-3" aria-hidden />
+                </button>
+              </div>
+              </>
+            )}
             {pinnedItems.has("indent") && (
               <>
               <span className="mx-1 h-4 w-px shrink-0 self-center bg-[var(--workspace-text-muted)]/60" role="separator" aria-hidden />
@@ -1445,7 +1609,72 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="relative flex min-h-[200px] min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-lg border border-[var(--workspace-border)] p-0.5 bg-[var(--workspace-background)]/95 backdrop-blur-sm">
+              <button
+                type="button"
+                className={`rounded p-1.5 shrink-0 transition-all duration-200 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] ${actionBounce === "share" ? "-translate-y-0.5" : ""}`}
+                onClick={shareWorkspace}
+                title={shareLabel}
+              >
+                <ShareIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className={`rounded p-1.5 shrink-0 transition-all duration-200 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] disabled:opacity-50 ${actionBounce === "copy" ? "-translate-y-0.5" : ""}`}
+                disabled={!canDownload}
+                onClick={copyOutput}
+                title={copyLabel}
+              >
+                <ClipboardDocumentIcon className="h-4 w-4" />
+              </button>
+              {isGraphView ? (
+                <Dropdown
+                  open={downloadMenuOpen}
+                  onOpenChange={setDownloadMenuOpen}
+                  side="bottom"
+                  align="end"
+                  contentClassName={`rounded border p-1 shadow-xl ${toolbarBorderClass} ${dropdownPanelClass}`}
+                  trigger={
+                    <button
+                      type="button"
+                      className={`rounded p-1.5 shrink-0 transition-colors text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] disabled:opacity-50`}
+                      disabled={!canDownload}
+                      title="Download"
+                    >
+                      <ArrowDownTrayIcon className="h-4 w-4" />
+                    </button>
+                  }
+                >
+                  <div className="flex flex-col gap-0.5 p-1">
+                    <button type="button" className="btn btn-ghost btn-xs justify-start" onClick={() => downloadOutput("png")}>PNG</button>
+                    <button type="button" className="btn btn-ghost btn-xs justify-start" onClick={() => downloadOutput("jpg")}>JPG</button>
+                  </div>
+                </Dropdown>
+              ) : (
+                <button
+                  type="button"
+                  className={`rounded p-1.5 shrink-0 transition-colors text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] disabled:opacity-50`}
+                  disabled={!canDownload}
+                  onClick={() => downloadOutput()}
+                  title="Download"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                className="rounded p-1.5 shrink-0 transition-colors text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)]"
+                onClick={() => setIsOutputMaximized((v) => !v)}
+                title={isOutputMaximized ? "Restore layout" : "Maximize output"}
+              >
+                {isOutputMaximized ? (
+                  <ArrowsPointingInIcon className="h-4 w-4" />
+                ) : (
+                  <ArrowsPointingOutIcon className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             {rightView === "raw" ? (
               activeOperation === "diff" && diffPreview ? (
                 <JsonDiffEditor
@@ -1455,6 +1684,9 @@ export default function Home() {
                   language={outputLanguage === "toml" || outputLanguage === "csv" ? "plaintext" : outputLanguage}
                   monacoTheme={monacoTheme}
                   fontSize={editorFontSize}
+                  modifiedEditable
+                  onModifiedChange={handleDiffModifiedChange}
+                  outputPanelClass={outputPanelClass}
                 />
               ) : output.trim() ? (
                 <JsonEditor
@@ -1507,7 +1739,7 @@ export default function Home() {
 
       <StatusBar
         valid={inputValid}
-        errorMessage={error}
+        errorMessage={error ?? validationError}
         lineCount={inputLineCount}
         sizeFormatted={inputSizeFormatted}
         liveTransform={liveTransform}
@@ -1517,10 +1749,11 @@ export default function Home() {
             open={inputFormatOpen}
             onOpenChange={setInputFormatOpen}
             side="top"
-            contentClassName={`w-24 rounded border p-1 shadow-xl ${toolbarBorderClass} ${dropdownPanelClass}`}
+            align="start"
+            contentClassName={`min-w-[5rem] rounded-lg border p-1.5 shadow-xl ${toolbarBorderClass} ${dropdownPanelClass}`}
             trigger={() => (
-              <div className={`${linkBtnClass} flex h-7 min-h-7 shrink-0 cursor-pointer items-center gap-1`}>
-                <span className="truncate">{FORMAT_LABELS[resolvedInputFormat]}</span>
+              <div className={`${linkBtnClass} flex h-7 min-h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-[var(--workspace-border)] px-1.5`}>
+                <span className="truncate capitalize">{FORMAT_LABELS[resolvedInputFormat]}</span>
                 <ChevronUpIcon className="h-3.5 w-3.5 shrink-0" />
               </div>
             )}
@@ -1543,60 +1776,13 @@ export default function Home() {
             </ul>
           </Dropdown>
         }
-        rightActions={
-          <>
-            <button
-              type="button"
-              className={`${linkBtnClass} h-7 min-h-7 shrink-0 gap-1`}
-              onClick={shareWorkspace}
-            >
-              <ShareIcon className="h-3.5 w-3.5 shrink-0" />
-              {shareLabel}
-            </button>
-            <button
-              type="button"
-              className={`${linkBtnClass} h-7 min-h-7 shrink-0 gap-1 disabled:opacity-50`}
-              disabled={!canDownload}
-              onClick={copyOutput}
-            >
-              <ClipboardDocumentIcon className="h-3.5 w-3.5 shrink-0" />
-              {copyLabel}
-            </button>
-            <button
-              type="button"
-              className={`${linkBtnClass} h-7 min-h-7 shrink-0 gap-1 disabled:opacity-50`}
-              disabled={!canDownload}
-              onClick={downloadOutput}
-            >
-              <ArrowDownTrayIcon className="h-3.5 w-3.5 shrink-0" />
-              Download
-            </button>
-            <button
-              type="button"
-              className={`${linkBtnClass} h-7 min-h-7 w-7 shrink-0`}
-              onClick={() => setIsOutputMaximized((v) => !v)}
-              title={isOutputMaximized ? "Restore layout" : "Maximize output"}
-              aria-label={isOutputMaximized ? "Restore layout" : "Maximize output"}
-            >
-              {isOutputMaximized ? (
-                <ArrowsPointingInIcon className="h-3.5 w-3.5 shrink-0" />
-              ) : (
-                <ArrowsPointingOutIcon className="h-3.5 w-3.5 shrink-0" />
-              )}
-            </button>
-          </>
-        }
       />
 
-        {modalKind ? (
+        {modalKind === "validate" ? (
           <div className="modal modal-open">
             <div className="modal-box w-full max-w-3xl">
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">
-                  {modalKind === "validate"
-                    ? "Schema (JSON or YAML) for Validate"
-                    : "Second document for Diff"}
-                </h3>
+                <h3 className="text-sm font-semibold">Schema (JSON or YAML) for Validate</h3>
                 <button
                   type="button"
                   className="btn btn-xs btn-soft"
@@ -1624,15 +1810,9 @@ export default function Home() {
                   className="btn btn-primary btn-sm"
                   onClick={() => {
                     if (!isModalInputValid) return;
-                    if (modalKind === "validate") {
-                      setSchemaInput(modalValue);
-                      setModalKind(null);
-                      executeOperation("validate", { schemaText: modalValue });
-                    } else {
-                      setCompareInput(modalValue);
-                      setModalKind(null);
-                      executeOperation("diff", { compareText: modalValue });
-                    }
+                    setSchemaInput(modalValue);
+                    setModalKind(null);
+                    executeOperation("validate", { schemaText: modalValue });
                   }}
                 >
                   Apply

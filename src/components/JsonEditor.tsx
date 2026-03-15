@@ -32,7 +32,7 @@ export function JsonEditor({
   fontSize = 13,
 }: JsonEditorProps) {
   const editorRef = React.useRef<editor.IStandaloneCodeEditor | null>(null);
-  const resolvedTheme = monacoTheme === "vs-dark" ? "jsonix-dark" : "jsonix-light";
+  const resolvedTheme = monacoTheme === "vs-dark" ? "formaty-dark" : "formaty-light";
   const isDarkTheme = monacoTheme === "vs-dark";
 
   return (
@@ -56,7 +56,7 @@ export function JsonEditor({
         value={value}
         language={language}
         beforeMount={(monaco) => {
-          monaco.editor.defineTheme("jsonix-dark", {
+          monaco.editor.defineTheme("formaty-dark", {
             base: "vs-dark",
             inherit: true,
             rules: [],
@@ -66,7 +66,7 @@ export function JsonEditor({
               "editor.lineHighlightBackground": "#ffffff10",
             },
           });
-          monaco.editor.defineTheme("jsonix-light", {
+          monaco.editor.defineTheme("formaty-light", {
             base: "vs",
             inherit: true,
             rules: [],

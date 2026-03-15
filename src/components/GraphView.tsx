@@ -13,11 +13,11 @@ import {
 import dynamic from "next/dynamic";
 import html2canvas from "html2canvas";
 import {
+  ArrowPathRoundedSquareIcon,
   ArrowsPointingOutIcon,
   ArrowUturnRightIcon,
   HomeIcon,
   MagnifyingGlassIcon,
-  PlusIcon,
   ScaleIcon,
 } from "@heroicons/react/24/outline";
 import "jsoncrack-react/style.css";
@@ -38,6 +38,7 @@ interface GraphViewProps {
 export interface GraphViewRef {
   copyPngToClipboard: () => Promise<void>;
   downloadPng: () => Promise<void>;
+  downloadImage: (format: "png" | "jpg") => Promise<void>;
 }
 
 const LAYOUTS: LayoutDirection[] = ["DOWN", "RIGHT", "UP", "LEFT"];
@@ -96,9 +97,9 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
   const toolbarBtnActive =
     "btn btn-sm btn-square h-9 min-h-9 rounded-md btn-primary";
   const searchInputClass =
-    `input input-sm h-9 w-48 rounded-md border ${toolbarBorderClass} bg-base-100 text-base-content shadow-none`;
+    "input input-sm h-9 w-48 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-panel)] text-[var(--workspace-text)] shadow-none";
 
-  const renderGraphPng = async () => {
+  const renderGraphImage = async (format: "png" | "jpg"): Promise<Blob> => {
     const source = exportRef.current;
     if (!source) {
       throw new Error("Graph canvas is not ready yet.");
@@ -108,6 +109,7 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
     const nativeCanvas = source.querySelector("canvas") as HTMLCanvasElement | null;
     if (nativeCanvas && nativeCanvas.width > 0 && nativeCanvas.height > 0) {
       try {
+        const mime = format === "jpg" ? "image/jpeg" : "image/png";
         return await new Promise<Blob>((resolve, reject) => {
           nativeCanvas.toBlob(
             (blob) => {
@@ -117,7 +119,8 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
                 reject(new Error("Failed to export canvas."));
               }
             },
-            "image/png"
+            mime,
+            format === "jpg" ? 0.92 : undefined
           );
         });
       } catch (error) {
@@ -166,13 +169,14 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
             ctx.drawImage(img, 0, 0);
             URL.revokeObjectURL(url);
             
+            const mime = format === "jpg" ? "image/jpeg" : "image/png";
             canvas.toBlob((blob) => {
               if (blob) {
                 resolve(blob);
               } else {
-                reject(new Error("PNG conversion failed."));
+                reject(new Error("Image conversion failed."));
               }
-            }, "image/png");
+            }, mime, format === "jpg" ? 0.92 : undefined);
           } catch (drawError) {
             URL.revokeObjectURL(url);
             reject(drawError);
@@ -215,11 +219,12 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
             });
           },
         });
+        const mime = format === "jpg" ? "image/jpeg" : "image/png";
         return await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob((blob) => {
             if (blob) resolve(blob);
-            else reject(new Error("PNG conversion failed."));
-          }, "image/png");
+            else reject(new Error("Image conversion failed."));
+          }, mime, format === "jpg" ? 0.92 : undefined);
         });
       } catch (fallbackError) {
         throw fallbackError instanceof Error ? fallbackError : new Error("Graph export failed.");
@@ -232,15 +237,25 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
       if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
         throw new Error("PNG clipboard copy is not supported in this browser.");
       }
-      const blob = await renderGraphPng();
+      const blob = await renderGraphImage("png");
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
     },
     downloadPng: async () => {
-      const blob = await renderGraphPng();
+      await renderGraphImage("png").then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "formaty-graph.png";
+        anchor.click();
+        URL.revokeObjectURL(url);
+      });
+    },
+    downloadImage: async (format: "png" | "jpg") => {
+      const blob = await renderGraphImage(format);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "jsonix-graph.png";
+      anchor.download = `formaty-graph.${format}`;
       anchor.click();
       URL.revokeObjectURL(url);
     },
@@ -263,10 +278,10 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
       </div>
 
       <div className="absolute bottom-2 left-2 z-10 flex items-center gap-2">
-        <div className={`join overflow-hidden rounded-md border ${toolbarBorderClass} ${joinItemBorderClass}`}>
+        <div className="flex items-center gap-0.5 rounded-lg border border-[var(--workspace-border)] p-0.5 bg-[var(--workspace-background)]/95 backdrop-blur-sm">
           <button
             type="button"
-            className={`${toolbarBtnIcon} join-item rounded-none border-0`}
+            className="rounded p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors"
             onClick={() => graphRef.current?.focusFirstNode()}
             aria-label="Focus root"
             title="Focus root"
@@ -275,7 +290,7 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
           </button>
           <button
             type="button"
-            className={`${toolbarBtnIcon} join-item rounded-none border-0`}
+            className="rounded p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors"
             onClick={() => graphRef.current?.centerView()}
             aria-label="Fit graph"
             title="Fit graph"
@@ -284,21 +299,21 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(function Graph
           </button>
           <button
             type="button"
-            className={`${toolbarBtnIcon} join-item rounded-none border-0`}
+            className="rounded p-1 text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)] transition-colors"
             onClick={rotateLayout}
             aria-label="Rotate layout"
             title={`Rotate layout`}
           >
-            <ArrowUturnRightIcon className="h-4 w-4" />
+            <ArrowPathRoundedSquareIcon className="h-4 w-4" />
           </button>
           <button
             type="button"
-            className={`${showGrid ? toolbarBtnActive : toolbarBtnIcon} join-item rounded-none border-0`}
+            className={`rounded p-1 transition-colors ${showGrid ? "bg-primary text-primary-content" : "text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:text-[var(--workspace-text)]"}`}
             onClick={() => setShowGrid((prev) => !prev)}
             aria-label={showGrid ? "Hide rulers" : "Show rulers"}
             title={showGrid ? "Hide rulers" : "Show rulers"}
           >
-            <PlusIcon className="h-4 w-4" />
+            <ScaleIcon className="h-4 w-4" />
           </button>
         </div>
 

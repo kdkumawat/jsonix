@@ -1,6 +1,8 @@
 "use client";
 
+import { useCallback } from "react";
 import { DiffEditor } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 
 interface JsonDiffEditorProps {
   original: string;
@@ -9,6 +11,9 @@ interface JsonDiffEditorProps {
   monacoTheme?: string;
   className?: string;
   fontSize?: number;
+  modifiedEditable?: boolean;
+  onModifiedChange?: (value: string) => void;
+  outputPanelClass?: string;
 }
 
 export function JsonDiffEditor({
@@ -18,10 +23,26 @@ export function JsonDiffEditor({
   monacoTheme = "vs-dark",
   className,
   fontSize = 13,
+  modifiedEditable = false,
+  onModifiedChange,
+  outputPanelClass = "border-base-300 bg-base-100",
 }: JsonDiffEditorProps) {
+  const handleMount = useCallback(
+    (editor: editor.IStandaloneDiffEditor) => {
+      if (!modifiedEditable || !onModifiedChange) return;
+      const modifiedModel = editor.getModel()?.modified;
+      if (!modifiedModel) return;
+      const disposable = modifiedModel.onDidChangeContent(() => {
+        onModifiedChange(modifiedModel.getValue());
+      });
+      return () => disposable.dispose();
+    },
+    [modifiedEditable, onModifiedChange],
+  );
+
   return (
     <div
-      className={`relative h-full min-h-0 overflow-hidden border border-base-300 bg-base-100 ${className ?? ""}`}
+      className={`relative h-full min-h-0 overflow-hidden border ${outputPanelClass} ${className ?? ""}`}
     >
       <DiffEditor
         height="100%"
@@ -29,8 +50,9 @@ export function JsonDiffEditor({
         modified={modified}
         language={language}
         theme={monacoTheme}
+        onMount={handleMount}
         options={{
-          readOnly: true,
+          readOnly: !modifiedEditable,
           automaticLayout: true,
           scrollBeyondLastLine: false,
           renderSideBySide: true,

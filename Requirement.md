@@ -1,10 +1,10 @@
-# jsonix - Product Requirement
+# formaty - Product Requirement
 
 Design and build the most powerful JSON tool on the internet, with a local-first architecture and professional-grade UX.
 
 ## 1) Product Vision
 
-jsonix is the all-in-one workspace for JSON engineering: inspect, query, transform, validate, generate types, compare versions, and automate repeatable workflows from a single interface.
+formaty is the all-in-one workspace for JSON engineering: inspect, query, transform, validate, generate types, compare versions, and automate repeatable workflows from a single interface.
 
 This should feel like:
 - The speed of a native desktop app

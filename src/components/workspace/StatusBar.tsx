@@ -52,8 +52,8 @@ export function StatusBar({
 
   return (
     <div
-      className="flex h-7 shrink-0 items-center justify-between gap-1 overflow-visible border-t border-[var(--workspace-border)] bg-[var(--workspace-background)] px-1.5 text-xs text-[var(--workspace-text-muted)]"
-      style={{ height: "28px", minHeight: "28px", padding: "0 8px" }}
+      className="flex flex-shrink-0 items-center justify-between gap-1 overflow-visible border-t border-[var(--workspace-border)] bg-[var(--workspace-background)] px-1.5 text-xs text-[var(--workspace-text-muted)]"
+      style={{ minHeight: "28px", padding: "0 8px", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto flex-nowrap">
         <span className="shrink-0 tabular-nums">{lineCount} lines</span>

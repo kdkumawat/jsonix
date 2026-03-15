@@ -1,6 +1,6 @@
-# formix
+# formaty
 
-**Transform, validate & format JSON, XML, YAML, TOML, CSV** — a local-first data toolkit.
+**Format, convert and validate JSON, XML, YAML, TOML and CSV** — a local-first data toolkit.
 
 ## Features
 
@@ -23,7 +23,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Documentation
 
 - [Feature Guide](docs/guide.md) — detailed guide to all features
-- [Live app](https://jsonix.pages.dev)
+- [Live app](https://formaty.pages.dev)
 
 ## Tech Stack
 

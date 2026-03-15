@@ -1,8 +1,8 @@
-# jsonix Feature Guide
+# formaty Feature Guide
 
 ## Overview
 
-jsonix is a local-first data toolkit for working with JSON, XML, YAML, TOML, and CSV. All processing runs in your browser — no data is sent to any server.
+formaty is a local-first data toolkit for working with JSON, XML, YAML, TOML, and CSV. All processing runs in your browser — no data is sent to any server.
 
 Use it to format, validate, transform, diff, and convert between data formats. Generate type definitions for TypeScript, Python, Go, Java, and more. View data as a tree or interactive graph.
 
@@ -34,7 +34,7 @@ Input format is auto-detected when you paste or import. Override it via the stat
 
 - **Raw** — Code editor with syntax highlighting, line numbers, copy
 - **Tree** — Expandable tree view of the structure
-- **Graph** — Interactive graph visualization (JSON only)
+- **Graph** — Interactive graph visualization (all formats)
 
 Use the star icon next to any view to pin it to the toolbar for quick switching.
 
@@ -74,7 +74,7 @@ This lets you customize the toolbar with your most-used actions for faster workf
 
 ## Privacy & Local-First
 
-jsonix runs entirely in your browser. No data is sent to external servers. Your input, output, and session state stay on your device. Session state (including pinned items) is stored in localStorage for convenience.
+formaty runs entirely in your browser. No data is sent to external servers. Your input, output, and session state stay on your device. Session state (including pinned items) is stored in localStorage for convenience.
 
 ## Transform Config
 

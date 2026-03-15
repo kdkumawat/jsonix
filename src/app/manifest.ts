@@ -4,8 +4,8 @@ export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "jsonix",
-    short_name: "jsonix",
+    name: "formaty",
+    short_name: "formaty",
     description: "Powerful local-first JSON tooling platform.",
     start_url: "/",
     display: "standalone",

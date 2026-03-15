@@ -5,7 +5,7 @@ import { useEffect } from "react";
 function resolveTheme(): "light" | "dark" {
   if (typeof window === "undefined") return "light";
   try {
-    const raw = localStorage.getItem("jsonix-session");
+    const raw = localStorage.getItem("formaty-session");
     const mode = raw ? JSON.parse(raw)?.themeMode : null;
     if (mode === "dark") return "dark";
     if (mode === "light") return "light";

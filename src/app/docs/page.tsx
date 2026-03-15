@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Documentation",
-  description: "jsonix feature guide and documentation",
+  description: "formaty feature guide and documentation",
 };
 
 export default function DocsPage() {
@@ -14,10 +14,10 @@ export default function DocsPage() {
             href="/"
             className="rounded p-1 text-sm text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:underline hover:text-primary transition-colors"
           >
-            ← Back to jsonix
+            ← Back to formaty
           </Link>
           <a
-            href="https://github.com/kdkumawat/jsonix"
+            href="https://github.com/kdkumawat/formaty"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded p-1 text-sm text-[var(--workspace-text-muted)] hover:bg-[var(--workspace-panel)] hover:underline hover:text-primary transition-colors"
@@ -27,12 +27,12 @@ export default function DocsPage() {
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-8 text-sm text-[var(--workspace-text)]">
-        <h1 className="mb-6 text-2xl font-semibold">jsonix Documentation</h1>
+        <h1 className="mb-6 text-2xl font-semibold">formaty Documentation</h1>
 
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-medium">Overview</h2>
           <p className="mb-3 leading-relaxed">
-            jsonix is a local-first data toolkit for working with JSON, XML, YAML, TOML, and CSV.
+            formaty is a local-first data toolkit for working with JSON, XML, YAML, TOML, and CSV.
             All processing runs in your browser — no data is sent to any server.
           </p>
           <p className="leading-relaxed">
@@ -169,7 +169,7 @@ export default function DocsPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-medium">Privacy & Local-First</h2>
           <p className="leading-relaxed">
-            jsonix runs entirely in your browser. No data is sent to external servers. Your input,
+            formaty runs entirely in your browser. No data is sent to external servers. Your input,
             output, and session state stay on your device. Session state (including pinned items)
             is stored in localStorage for convenience.
           </p>

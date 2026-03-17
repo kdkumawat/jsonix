@@ -26,6 +26,25 @@
   --workspace-text-muted: #9ca3af;
 }
 
+[data-theme="light"] {
+  --workspace-background: #f5f5f5;
+  --workspace-panel: #ffffff;
+  --workspace-border: #e5e5e5;
+  --workspace-text: #171717;
+  --workspace-text-muted: #737373;
+}
+
+/* First paint: use system preference when no data-theme set yet */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --workspace-background: #0b0b0b;
+    --workspace-panel: #111111;
+    --workspace-border: #1f1f1f;
+    --workspace-text: #e5e5e5;
+    --workspace-text-muted: #9ca3af;
+  }
+}
+
 html {
   font-size: 100%;
 }
@@ -41,9 +60,12 @@ body {
   line-height: 1.5;
 }
 
-/* Monaco editor: reserve space for scrollbar to prevent content overlap */
-.monaco-editor .monaco-scrollable-element {
-  scrollbar-gutter: stable;
+/* Monaco editor: single scrollbar, no overlap */
+.monaco-editor .monaco-scrollable-element > .scrollbar.vertical {
+  width: 10px;
+}
+.monaco-editor .monaco-scrollable-element > .scrollbar.horizontal {
+  height: 10px;
 }
 
 /* [data-theme="dark"] .workspace-icon {

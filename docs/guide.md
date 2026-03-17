@@ -22,6 +22,7 @@ Input format is auto-detected when you paste or import. Override it via the stat
 
 | Action | Description |
 |--------|-------------|
+| **Beautify** | Pretty-print with indentation |
 | **Format** | Pretty-print with configurable indent (0–10 spaces) |
 | **Minify** | Remove whitespace and newlines |
 | **Flatten** | Convert nested objects to dot-notation keys (e.g. `a.b.c`) |
@@ -61,7 +62,7 @@ This lets you customize the toolbar with your most-used actions for faster workf
 
 ## Share & Export
 
-- **Share** — Generate a URL with input/output encoded (compressed)
+- **Share** — Save your playground to the cloud and get a short link (`/playground?id=...`). Anyone with the link sees the same input, output, view mode (raw/graph/table/tree/query), format, and settings. Your local preferences are not overwritten when viewing a shared link.
 - **Copy** — Copy output to clipboard
 - **Download** — Download output as a file with the appropriate extension
 
@@ -74,7 +75,7 @@ This lets you customize the toolbar with your most-used actions for faster workf
 
 ## Privacy & Local-First
 
-formaty runs entirely in your browser. No data is sent to external servers. Your input, output, and session state stay on your device. Session state (including pinned items) is stored in localStorage for convenience.
+formaty runs entirely in your browser. **Your data stays on your screen** — no input or output is sent to servers except when you explicitly share a link. Session state (pinned items, theme, etc.) is stored in localStorage. Shared links are stored temporarily; you can disable them at any time.
 
 ## Transform Config
 
@@ -90,4 +91,11 @@ Diff compares two JSON documents. Paste the second document in the modal and run
 
 ## Share URL
 
-Share encodes your input and output into a compressed URL. Anyone with the link can open the same state.
+Share saves your playground to the cloud and generates a short link at `/playground?id={id}`. Anyone with the link sees:
+
+- Input and output
+- View mode (raw, tree, graph, query, table)
+- Output format (JSON, XML, YAML, etc.) and type language (TypeScript, Java, etc.) when applicable
+- Split ratio and live-transform setting
+
+Your own settings (theme, pinned items, etc.) are not changed when you open a shared link. To stop sharing, click the disable icon next to the link — the link is removed and others will see a "not found" message.

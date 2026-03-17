@@ -8,7 +8,9 @@ export const yamlAdapter: FormatAdapter = {
     return yaml.load(input) as JsonValue;
   },
   stringify(data: JsonValue, options?: Parameters<FormatAdapter["stringify"]>[1]): string {
-    const indent = Math.max(1, Math.min(10, options?.indentation ?? 2));
-    return yaml.dump(data, { lineWidth: -1, indent });
+    const minify = options?.minify ?? false;
+    const indent = minify ? 0 : Math.max(1, Math.min(10, options?.indentation ?? 2));
+    const out = yaml.dump(data, { lineWidth: -1, indent, noRefs: true });
+    return minify ? out.replace(/\n{2,}/g, "\n").trim() : out;
   },
 };

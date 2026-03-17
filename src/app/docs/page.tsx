@@ -162,12 +162,12 @@ export default function DocsPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-medium">Share & Export</h2>
           <ul className="list-inside list-disc space-y-1">
-            <li><strong>Share</strong> — Generate a URL with input/output encoded (compressed)</li>
+            <li><strong>Share</strong> — Save your playground to the cloud and get a short link at <code className="rounded bg-[var(--workspace-panel)] px-1">/playground?id={'{id}'}</code>. Recipients see the same input, output, view mode (raw/graph/table/tree/query), format, and type language. Your local preferences are not overwritten.</li>
             <li><strong>Copy</strong> — Copy output to clipboard</li>
             <li><strong>Download</strong> — Download output as a file</li>
           </ul>
           <p className="mt-3 leading-relaxed">
-            Share links restore input, output, view mode, and format. Use <code className="rounded bg-[var(--workspace-panel)] px-1">/play?data=...</code> for shareable playground links.
+            To stop sharing, click the disable icon next to the link — the link is removed and others will see a &quot;not found&quot; message.
           </p>
         </section>
 
@@ -182,8 +182,7 @@ export default function DocsPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-medium">Privacy & Local-First</h2>
           <p className="leading-relaxed">
-            formaty runs entirely in your browser. No data is sent to external servers. Your input,
-            output, and session state stay on your device. Session state is stored in localStorage.
+            <strong>Your data stays in your browser only.</strong> formaty runs entirely in your browser. No input or output is sent to servers except when you explicitly share a link. Session state is stored in localStorage. Shared links can be disabled at any time.
           </p>
         </section>
       </main>

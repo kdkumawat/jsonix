@@ -8,14 +8,14 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://formaty.pages.dev";
+const SITE_URL = process.env.SITE_URL || "https://formaty.pages.dev";
 const SITE_NAME = "formaty";
-const SITE_TITLE = "formaty — JSON, XML, YAML, TOML, CSV converter & query playground";
+const SITE_TITLE = "formaty — Local JSON, XML, YAML converter, formatter & playground";
 const CREATOR_NAME = "Kuldeep Kumawat";
 const CREATOR_X = "https://x.com/kuldeep_kumawat";
 const CREATOR_LINKEDIN = "https://www.linkedin.com/in/kdkumawat";
 const SITE_DESCRIPTION =
-  "Format, convert, validate, and query JSON, XML, YAML, TOML, CSV. Local-first: cURL fetch, JSONPath/JMESPath query, tree & graph view, table export, schema validation, type generation. Paste with Ctrl+V.";
+  "Your data stays in your browser only. Format, convert, validate, and query JSON, XML, YAML, TOML, CSV. Local-first: cURL fetch, JSONPath/JMESPath query, tree & graph view, schema validation, type generation. Paste with Ctrl+V.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -124,7 +124,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t="light";try{var s=localStorage.getItem("formaty-session");if(s){var d=JSON.parse(s);if(d.themeMode==="dark"||d.themeMode==="light")t=d.themeMode;else if(window.matchMedia("(prefers-color-scheme: dark)").matches)t="dark"}else if(window.matchMedia("(prefers-color-scheme: dark)").matches)t="dark"}catch(e){if(window.matchMedia("(prefers-color-scheme: dark)").matches)t="dark"}document.documentElement.setAttribute("data-theme",t);var e=document.createElement("style");e.id="formaty-theme-inline";e.textContent=t==="dark"?"html,body{--workspace-background:#0b0b0b;--workspace-panel:#111111;--workspace-border:#1f1f1f;--workspace-text:#e5e5e5;--workspace-text-muted:#9ca3af}":"html,body{--workspace-background:#f5f5f5;--workspace-panel:#ffffff;--workspace-border:#e5e5e5;--workspace-text:#171717;--workspace-text-muted:#737373}";document.head.appendChild(e)})();`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <script
           type="application/ld+json"

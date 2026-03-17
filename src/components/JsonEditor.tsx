@@ -35,7 +35,6 @@ export function JsonEditor({
 }: JsonEditorProps) {
   const editorRef = React.useRef<editor.IStandaloneCodeEditor | null>(null);
   const resolvedTheme = monacoTheme === "vs-dark" ? "formaty-dark" : "formaty-light";
-  const isDarkTheme = monacoTheme === "vs-dark";
 
   const skeleton = (
     <div className="flex h-full w-full flex-col gap-2 p-4">
@@ -48,15 +47,7 @@ export function JsonEditor({
   return (
     <div
       role="presentation"
-      className={`relative h-full min-h-0 overflow-hidden border cursor-text ${
-        panelTone === "output"
-          ? isDarkTheme
-            ? "border-[#2d2d30] bg-[#1e1e1e]"
-            : "border-[#e5e5e5] bg-[#ffffff]"
-          : isDarkTheme
-            ? "border-[#3c3c3c] bg-[#252526]"
-            : "border-[#d4d4d4] bg-[#f3f3f3]"
-      } ${className ?? ""}`}
+      className={`relative h-full min-h-0 overflow-hidden border border-[var(--workspace-border)] bg-[var(--workspace-panel)] cursor-text ${className ?? ""}`}
       onClick={() => editorRef.current?.focus()}
     >
       <Editor
@@ -91,10 +82,16 @@ export function JsonEditor({
         options={{
           minimap: { enabled: false },
           fontSize,
+          lineHeight: 20,
           automaticLayout: true,
           padding: { top: 6, bottom: 6 },
           scrollBeyondLastLine: false,
           wordWrap: "on",
+          scrollbar: {
+            verticalScrollbarSize: 10,
+            horizontalScrollbarSize: 10,
+            useShadows: false,
+          },
           readOnly,
           lineNumbers: hideLineNumbers ? "off" : "on",
           glyphMargin: !hideLineNumbers,

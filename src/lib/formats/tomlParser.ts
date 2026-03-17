@@ -20,9 +20,13 @@ export const tomlAdapter: FormatAdapter = {
     const parsed = TOML.parse(input);
     return tomlValueToJson(parsed);
   },
-  stringify(data: JsonValue, _options?: Parameters<FormatAdapter["stringify"]>[1]): string {
+  stringify(data: JsonValue, options?: Parameters<FormatAdapter["stringify"]>[1]): string {
     const obj = Array.isArray(data) ? { data } : (data as Record<string, unknown>);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return TOML.stringify(obj as any);
+    let out = TOML.stringify(obj as any);
+    if (options?.minify) {
+      out = out.replace(/\n{2,}/g, "\n").trim();
+    }
+    return out;
   },
 };

@@ -9,12 +9,12 @@ const parser = new XMLParser({
   trimValues: true,
 });
 
-function createXmlBuilder(indent = 2) {
+function createXmlBuilder(indent = 2, minify = false) {
   return new XMLBuilder({
-    format: true,
+    format: !minify,
     ignoreAttributes: false,
     attributeNamePrefix: "@_",
-    indentBy: " ".repeat(Math.max(1, Math.min(10, indent))),
+    indentBy: minify ? "" : " ".repeat(Math.max(1, Math.min(10, indent))),
   });
 }
 
@@ -36,7 +36,8 @@ export const xmlAdapter: FormatAdapter = {
   },
   stringify(data: JsonValue, options?: Parameters<FormatAdapter["stringify"]>[1]): string {
     const indent = options?.indentation ?? 2;
-    const b = createXmlBuilder(indent);
+    const minify = options?.minify ?? false;
+    const b = createXmlBuilder(indent, minify);
     const wrapped = typeof data === "object" && data !== null && !Array.isArray(data)
       ? { root: data }
       : { root: data };

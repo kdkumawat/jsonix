@@ -5,12 +5,15 @@ import {
 import type { FormatKind } from "./formats";
 import type { TypeTargetLanguage } from "./json/core";
 
+export type OutputDisplayKind = FormatKind | TypeTargetLanguage | "plaintext";
+
 export interface WorkspaceState {
   input: string;
   convertToFormat?: FormatKind;
   liveTransform?: boolean;
   output?: string;
   outputFormat?: FormatKind;
+  outputLanguage?: OutputDisplayKind; // for type output: typescript, java, etc.
   typeLanguage?: TypeTargetLanguage;
   viewMode?: "raw" | "tree" | "graph" | "query" | "table";
   split?: number;

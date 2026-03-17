@@ -1,6 +1,7 @@
 "use client";
 
 import { SunIcon, MoonIcon, ComputerDesktopIcon } from "@heroicons/react/24/outline";
+import { Logo } from "@/components/Logo";
 
 type ThemeMode = "system" | "dark" | "light";
 
@@ -22,9 +23,8 @@ export function Header({ themeMode, onThemeChange }: HeaderProps) {
       style={{ height: "40px", minHeight: "40px" }}
     >
       <div className="flex min-w-0 flex-1 items-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon.svg" alt="" width={24} height={24} className="workspace-icon shrink-0" />
-        <span className="shrink-0 text-base font-semibold text-primary">
+        <Logo size={24} />
+        <span className="shrink-0 text-base font-bold text-primary">
           ormaty
         </span>
         <span className="hidden truncate text-xs text-[var(--workspace-text-muted)] sm:inline md:max-w-[20rem] lg:max-w-none ml-2">

@@ -9,6 +9,7 @@ export interface FormatStringifyOptions {
   indentation?: number;
   quoteStyle?: "single" | "double";
   sortKeys?: boolean;
+  minify?: boolean;
 }
 
 export interface FormatAdapter {

@@ -16,6 +16,7 @@ interface StatusBarProps {
   cursorPosition?: string;
   indentSize?: number;
   encoding?: string;
+  sharedLink?: ReactNode;
 }
 
 function formatSize(bytes: number): string {
@@ -36,6 +37,7 @@ export function StatusBar({
   cursorPosition,
   indentSize,
   encoding = "UTF-8",
+  sharedLink,
 }: StatusBarProps) {
   const validInvalidEl = errorMessage ? (
     <span className="flex min-w-0 shrink items-center gap-1.5 text-error whitespace-nowrap" title={errorMessage}>
@@ -57,6 +59,7 @@ export function StatusBar({
   );
 
   return (
+    <>
     <div
       className="flex flex-shrink-0 items-center justify-between gap-1 overflow-x-auto overflow-y-hidden border-t border-[var(--workspace-border)] bg-[var(--workspace-background)] px-1.5 text-xs text-[var(--workspace-text-muted)]"
       style={{ minHeight: "28px", padding: "0 8px", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
@@ -89,12 +92,14 @@ export function StatusBar({
           </button>
         )}
         {validInvalidEl}
+        {sharedLink}
         <span className="flex-1" />
       </div>
       {rightActions ? (
         <div className="flex shrink-0 flex-nowrap items-center gap-1 overflow-x-auto">{rightActions}</div>
       ) : null}
     </div>
+    </>
   );
 }
 

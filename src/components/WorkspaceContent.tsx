@@ -42,6 +42,7 @@ import { Logo } from "@/components/Logo";
 import { diffJson } from "@/lib/json/diff";
 import { useJsonWorker } from "@/hooks/useJsonWorker";
 import { detectFormat, FORMAT_LABELS, getInputFormatLabel, parseInput, stringifyOutput, type FormatKind, type InputFormatKind } from "@/lib/formats";
+import { ALL_TOOL_ROUTES, TOOL_PRESETS, type ToolRoute } from "@/lib/seo";
 import { executeCurl, parseCurl } from "@/lib/curl/parseCurl";
 import { formatJson } from "@/lib/json/core";
 import { decodeState, encodeState } from "@/lib/shareState";
@@ -338,10 +339,10 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
   const [split, setSplit] = useState(20);
   const [isResizing, setIsResizing] = useState(false);
   const [schemaInput, setSchemaInput] = useState("");
-  const [compareInput, setCompareInput] = useState("");
+  const [diffLeftInput, setDiffLeftInput] = useState("");
+  const [diffRightInput, setDiffRightInput] = useState("");
   const [modalKind, setModalKind] = useState<ModalKind>(null);
   const [modalValue, setModalValue] = useState("");
-  const [diffPreview, setDiffPreview] = useState<{ original: string; modified: string } | null>(null);
   const [rightView, setRightView] = useState<RightView>("raw");
   const [typeLanguage, setTypeLanguage] = useState<TypeTargetLanguage>("typescript");
   const [copyState, setCopyState] = useState<"idle" | "done" | "error">("idle");
@@ -572,6 +573,49 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
       sessionRestoredRef.current = true;
       return;
     }
+    const toolParam = searchParams?.get("tool");
+    if (pathname === "/playground" && toolParam && ALL_TOOL_ROUTES.includes(toolParam as ToolRoute)) {
+      const preset = TOOL_PRESETS[toolParam as ToolRoute];
+      if (preset) {
+        if (preset.input) {
+          setInput(preset.input);
+          setUndoStack([preset.input]);
+          setUndoIndex(0);
+        }
+        if (preset.inputFormatOverride) setInputFormatOverride(preset.inputFormatOverride);
+        if (preset.convertToFormat && FORMAT_KINDS.includes(preset.convertToFormat))
+          setConvertToFormat(preset.convertToFormat);
+        if (preset.viewMode) setRightView(preset.viewMode);
+        if (preset.activeOperation) setActiveOperation(preset.activeOperation as OperationAction);
+        if (preset.outputLanguage) {
+          const ol = preset.outputLanguage;
+          if (["json", "xml", "yaml", "toml", "csv"].includes(ol)) {
+            setOutputExt(EXT_BY_FORMAT[ol as FormatKind]);
+            setOutputLanguage(ol as OutputLanguage);
+          } else {
+            const ext = TYPE_LANGUAGES.find((t) => t.id === ol)?.ext ?? "ts";
+            setOutputExt(ext);
+            setOutputLanguage(ol as OutputLanguage);
+          }
+        }
+        if (preset.typeLanguage) setTypeLanguage(preset.typeLanguage as TypeTargetLanguage);
+        if ("diffLeftInput" in preset && preset.diffLeftInput) setDiffLeftInput(preset.diffLeftInput);
+        if ("diffRightInput" in preset && preset.diffRightInput) setDiffRightInput(preset.diffRightInput);
+        if (preset.activeOperation === "diff") {
+          setIsOutputMaximized(true);
+          setRightView("raw");
+          const dl = preset.diffLeftInput ?? "";
+          const dr = preset.diffRightInput ?? "";
+          if (dl.trim() || dr.trim()) {
+            setTimeout(() => {
+              executeOperation("diff", { leftText: dl, rightText: dr });
+            }, 0);
+          }
+        }
+        sessionRestoredRef.current = true;
+        return;
+      }
+    }
     const hash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
     const shared = searchParams?.get("shared") === "1";
     const state = hash ? decodeState(hash) : null;
@@ -665,7 +709,7 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
     } catch {
       // Ignore malformed persisted sessions.
     }
-  }, [searchParams]);
+  }, [searchParams, pathname]);
 
   useEffect(() => {
     if (isViewingSharedRef.current) return;
@@ -796,7 +840,6 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
       if (!currentInput.trim()) return;
       setBusy(true);
       setError(null);
-      setDiffPreview(null);
       const currentFmt = detectFormat(currentInput);
       if (currentFmt === "curl") return;
       void run<JsonValue>("parseFormat", { input: currentInput, format: currentFmt })
@@ -935,7 +978,6 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
     setBusy(true);
     setError(null);
     setValidationError(null);
-    setDiffPreview(null);
     void (async () => {
       try {
         let toParse = text;
@@ -972,16 +1014,39 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
     action: OperationAction,
     options?: {
       schemaText?: string;
-      compareText?: string;
+      leftText?: string;
+      rightText?: string;
       typeLanguage?: TypeTargetLanguage;
       formatOptions?: FormatOptions;
     },
   ) => {
     setBusy(true);
     setError(null);
-    if (action !== "diff") setDiffPreview(null);
     void (async () => {
       try {
+        if (action === "diff") {
+          const leftText = options?.leftText ?? diffLeftInput;
+          const rightText = options?.rightText ?? diffRightInput;
+          if (!leftText.trim() && !rightText.trim()) {
+            setBusy(false);
+            return;
+          }
+          const leftParse = leftText.trim()
+            ? await run<JsonValue>("parseFormat", { input: leftText, format: detectFormat(leftText) })
+            : null;
+          const rightParse = rightText.trim()
+            ? await run<JsonValue>("parseFormat", { input: rightText, format: detectFormat(rightText) })
+            : null;
+          const left = leftParse ?? (rightParse ? {} : {});
+          const right = rightParse ?? (leftParse ? {} : {});
+          setRightView("raw");
+          const result = diffJson(left as JsonValue, right as JsonValue);
+          const out = await convertJsonToOutput(result as unknown as JsonValue);
+          setOutputData(out, action);
+          setParsedOutput(result as unknown as JsonValue);
+          return;
+        }
+
         const left = await getParsedInput();
 
         if (action === "validate") {
@@ -996,24 +1061,6 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
           const out = await convertJsonToOutput(result as JsonValue);
           setOutputData(out, action);
           setParsedOutput(result as JsonValue);
-          return;
-        }
-
-        if (action === "diff") {
-          const compareText = options?.compareText ?? compareInput;
-          if (!compareText.trim()) throw new Error("Compare JSON is required for Diff.");
-          const right = await run<JsonValue>("parseFormat", {
-            input: compareText,
-            format: detectFormat(compareText),
-          });
-          const leftStr = await convertJsonToOutput(left);
-          const rightStr = await convertJsonToOutput(right);
-          setDiffPreview({ original: leftStr, modified: compareText });
-          setRightView("raw");
-          const result = diffJson(left, right);
-          const out = await convertJsonToOutput(result as unknown as JsonValue);
-          setOutputData(out, action);
-          setParsedOutput(result as unknown as JsonValue);
           return;
         }
 
@@ -1106,18 +1153,28 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
     })();
   };
 
-  const handleDiffModifiedChange = useCallback(
+  const handleDiffLeftChange = useCallback(
     (value: string) => {
-      setCompareInput(value);
-      setDiffPreview((prev) => (prev ? { ...prev, modified: value } : null));
+      setDiffLeftInput(value);
       if (diffDebounceRef.current) clearTimeout(diffDebounceRef.current);
-      if (!value.trim()) return;
       diffDebounceRef.current = setTimeout(() => {
         diffDebounceRef.current = null;
-        executeOperation("diff", { compareText: value });
+        executeOperation("diff", { leftText: value, rightText: diffRightInput });
       }, 400);
     },
-    [executeOperation],
+    [diffRightInput, executeOperation],
+  );
+
+  const handleDiffRightChange = useCallback(
+    (value: string) => {
+      setDiffRightInput(value);
+      if (diffDebounceRef.current) clearTimeout(diffDebounceRef.current);
+      diffDebounceRef.current = setTimeout(() => {
+        diffDebounceRef.current = null;
+        executeOperation("diff", { leftText: diffLeftInput, rightText: value });
+      }, 400);
+    },
+    [diffLeftInput, executeOperation],
   );
 
   useEffect(() => () => {
@@ -1139,7 +1196,6 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
           setRightView(prevBeforeDiffRef.current.rightView);
           setActiveOperation(prevBeforeDiffRef.current.activeOperation);
           setIsOutputMaximized(false);
-          setDiffPreview(null);
           if (prevBeforeDiffRef.current.activeOperation === "format") {
             runConvert(convertToFormat);
           } else if (prevBeforeDiffRef.current.activeOperation === "generateTypes") {
@@ -1154,15 +1210,19 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
       prevBeforeDiffRef.current = { rightView, activeOperation, isOutputMaximized: isOutputMaximized };
       setIsOutputMaximized(true);
       setRightView("raw");
-      setBusy(true);
+      setActiveOperation("diff");
       setError(null);
+      setBusy(true);
       void (async () => {
         try {
-          const left = await getParsedInput();
-          const leftStr = await convertJsonToOutput(left);
-          setDiffPreview({ original: leftStr, modified: compareInput });
-          if (compareInput.trim()) {
-            executeOperation("diff", { compareText: compareInput });
+          let leftStr = diffLeftInput;
+          if (input.trim()) {
+            const left = await getParsedInput();
+            leftStr = await convertJsonToOutput(left);
+            setDiffLeftInput(leftStr);
+          }
+          if (leftStr.trim() || diffRightInput.trim()) {
+            executeOperation("diff", { leftText: leftStr, rightText: diffRightInput });
           } else {
             setBusy(false);
           }
@@ -1425,7 +1485,7 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
                   setSharedLinkId(null);
                   setSharedLinkUrl(null);
                   isViewingSharedRef.current = false;
-                  if (pathname === "/playground" && searchParams?.get("id")) router.replace("/");
+                  if (pathname === "/playground" && searchParams?.get("id")) router.replace("/playground");
                   if (!isDesktopLayout) setMobileShowOutput(true);
                 }}
               >
@@ -1958,16 +2018,18 @@ export function WorkspaceContent({ initialState, sharedLinkId: initialSharedLink
                 </pre>
               </div>
             ) : rightView === "raw" ? (
-              activeOperation === "diff" && diffPreview ? (
+              activeOperation === "diff" ? (
                 <JsonDiffEditor
-                  original={diffPreview.original}
-                  modified={diffPreview.modified}
+                  original={diffLeftInput}
+                  modified={diffRightInput}
                   className="h-full min-h-0 flex-1"
-                  language={outputLanguage === "toml" || outputLanguage === "csv" ? "plaintext" : outputLanguage}
+                  language="json"
                   monacoTheme={monacoTheme}
                   fontSize={editorFontSize}
+                  originalEditable
                   modifiedEditable
-                  onModifiedChange={handleDiffModifiedChange}
+                  onOriginalChange={handleDiffLeftChange}
+                  onModifiedChange={handleDiffRightChange}
                   outputPanelClass={outputPanelClass}
                 />
               ) : output.trim() ? (
